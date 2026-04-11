@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillSwap - Anti-Cheat Learning Platform</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+    
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --secondary: #ec4899;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f8fafc;
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --text: #1e293b;
+      --text-light: #64748b;
+      --border: #e2e8f0;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: var(--text);
+    }
+    
+    nav {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      padding: 1rem 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+    
+    .nav-links a, .nav-links button {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 1rem;
+      position: relative;
+    }
+    
+    .badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--danger);
+      color: white;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 1rem;
+    }
+    
+    .page {
+      display: none;
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      animation: fadeIn 0.5s;
+    }
+    
+    .page.active { display: block; }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .auth-container {
+      max-width: 450px;
+      margin: 4rem auto;
+      background: var(--card-bg);
+      padding: 2.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .auth-container h2 {
+      margin-bottom: 1.5rem;
+      text-align: center;
+      font-size: 1.875rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid var(--border);
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+    
+    .btn-success { background: var(--success); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-secondary {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+    
+    .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
+    
+    .btn:disabled, .btn-disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 2rem;
+    }
+    
+    .sidebar {
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      height: fit-content;
+      position: sticky;
+      top: 100px;
+    }
+    
+    .avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      color: white;
+      margin: 0 auto 1rem;
+      font-weight: bold;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    
+    .stat-card {
+      background: var(--bg);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    .main-content {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 1rem;
+    }
+    
+    .matches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    .match-card {
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      position: relative;
+      transition: all 0.3s;
+    }
+    
+    .match-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      border-color: var(--primary);
+    }
+    
+    .match-score {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: linear-gradient(135deg, var(--success), #34d399);
+      color: white;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.25rem;
+    }
+    
+    .session-status {
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-accepted { background: #dbeafe; color: #1e40af; }
+    .status-ongoing { background: #d1fae5; color: #065f46; }
+    .status-completed { background: #dbeafe; color: #1e40af; }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .modal.active { display: flex; }
+    
+    .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .timer-display {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .timer-display .time {
+      font-size: 3rem;
+      font-weight: bold;
+      font-family: monospace;
+    }
+    
+    .chat-container {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      height: 70vh;
+      background: white;
+      border-radius: 1rem;
+      overflow: hidden;
+    }
+    
+    .chat-sidebar {
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+    }
+    
+    .chat-user {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    
+    .chat-user:hover, .chat-user.active {
+      background: #e0e7ff;
+    }
+    
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      background: #f8fafc;
+    }
+    
+    .message {
+      max-width: 70%;
+      margin-bottom: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+    }
+    
+    .message.sent {
+      background: var(--primary);
+      color: white;
+      margin-left: auto;
+    }
+    
+    .message.received {
+      background: white;
+      border: 1px solid var(--border);
+      margin-right: auto;
+    }
+    
+    .session-card {
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    
+    .confirmation-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    
+    .confirm-status {
+      padding: 1rem;
+      background: #f3f4f6;
+      border-radius: 0.5rem;
+      text-align: center;
+    }
+    
+    .anti-cheat-notice {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #fef3c7;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      border-left: 4px solid var(--warning);
+    }
+    
+    @media (max-width: 768px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .chat-container { grid-template-columns: 1fr; height: 60vh; }
+      .matches-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav id="navbar" class="hidden">
+    <div class="logo">🛡️ SkillSwap Secure</div>
+    <div class="nav-links">
+      <a onclick="showPage('dashboard')">Dashboard</a>
+      <a onclick="showPage('discover')">Discover</a>
+      <a onclick="showPage('sessions')">My Sessions</a>
+      <a onclick="showPage('chat')">Messages</a>
+      <button onclick="toggleNotifications()">
+        🔔 <span id="notif-badge" class="badge hidden">0</span>
+      </button>
+      <div class="user-menu" style="display: flex; align-items: center; gap: 1rem;">
+        <span style="color: var(--primary); font-weight: 600;" id="nav-points">0 pts</span>
+        <button onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="notifications-panel" id="notifications-panel" style="display: none; position: absolute; top: 60px; right: 20px; width: 350px; background: white; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 200;">
+    <div style="padding: 1rem; border-bottom: 1px solid var(--border); font-weight: 600;">Notifications</div>
+    <div id="notifications-list" style="max-height: 400px; overflow-y: auto;"></div>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="page-login" class="page active">
+    <div class="auth-container">
+      <h2>🔒 Secure Login</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="login-email" required placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Sign In</button>
+      </form>
+      <p class="text-center mt-4">
+        New user? <a href="#" onclick="showPage('register')" style="color: var(--primary); text-decoration: none; font-weight: 600;">Create Account</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- REGISTER -->
+  <div id="page-register" class="page">
+    <div class="auth-container">
+      <h2>Create Account</h2>
+      <form id="register-form">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="reg-name" required placeholder="John Doe">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" required placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="reg-password" required placeholder="Min 6 characters">
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="reg-location" placeholder="New York, USA">
+        </div>
+        <div class="form-group">
+          <label>Bio</label>
+          <textarea id="reg-bio" placeholder="Tell us about yourself..."></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Skills You Teach (with level)</label>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <input type="text" id="teach-input" placeholder="e.g., Python" style="flex: 1;">
+            <select id="teach-level">
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Expert">Expert</option>
+            </select>
+            <button type="button" class="btn btn-secondary" onclick="addSkill('teach')">Add</button>
+          </div>
+          <div id="teach-tags" class="tags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Skills You Want to Learn</label>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <input type="text" id="want-input" placeholder="e.g., Guitar" style="flex: 1;">
+            <button type="button" class="btn btn-secondary" onclick="addSkill('want')">Add</button>
+          </div>
+          <div id="want-tags" class="tags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full">Create Account</button>
+        <button type="button" class="btn btn-secondary w-full mt-4" onclick="showPage('login')">Back</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page">
+    <div class="dashboard-grid">
+      <aside class="sidebar">
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <div class="avatar" id="dash-avatar">U</div>
+          <h3 id="dash-name">User</h3>
+          <p id="dash-location" style="color: var(--text-light); font-size: 0.875rem;">📍 Location</p>
+          <div style="margin-top: 1rem; padding: 0.5rem; background: #f3f4f6; border-radius: 0.5rem;">
+            <div style="font-size: 0.875rem; color: var(--text-light);">Level</div>
+            <div style="font-weight: bold; color: var(--primary);" id="dash-level">Beginner</div>
+          </div>
+          <div style="margin-top: 0.5rem; padding: 0.5rem; background: #f3f4f6; border-radius: 0.5rem;">
+            <div style="font-size: 0.875rem; color: var(--text-light);">Points</div>
+            <div style="font-weight: bold; color: var(--primary);" id="dash-points">0</div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h2>🔥 Top Matches</h2>
+          <button class="btn btn-primary btn-sm" onclick="showPage('discover')">Find More</button>
+        </div>
+        <div id="top-matches" class="matches-grid">
+          <p style="color: var(--text-light);">Loading...</p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- DISCOVER -->
+  <div id="page-discover" class="page">
+    <div class="main-content">
+      <h2 style="margin-bottom: 1.5rem;">🌍 Discover Partners</h2>
+      <div id="all-matches" class="matches-grid">
+        <p style="color: var(--text-light);">Loading...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SESSIONS -->
+  <div id="page-sessions" class="page">
+    <div class="main-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2>📅 My Sessions</h2>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-primary btn-sm" onclick="loadSessions('upcoming')">Upcoming</button>
+          <button class="btn btn-secondary btn-sm" onclick="loadSessions('completed')">Completed</button>
+        </div>
+      </div>
+      <div id="sessions-list">
+        <p style="color: var(--text-light);">Loading...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div id="page-chat" class="page">
+    <div class="chat-container">
+      <div class="chat-sidebar" id="chat-list">
+        <div style="padding: 1rem; font-weight: 600; border-bottom: 1px solid var(--border);">Conversations</div>
+      </div>
+      <div style="display: flex; flex-direction: column; flex: 1;">
+        <div style="padding: 1rem; background: white; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+          <div id="chat-header">Select a conversation</div>
+          <button id="btn-book-session" class="btn btn-primary btn-sm" onclick="openBookModal()" style="display: none;">📅 Book Session</button>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div style="text-align: center; color: var(--text-light); margin-top: 4rem;">Select a user to chat</div>
+        </div>
+        <div style="padding: 1rem; background: white; border-top: 1px solid var(--border); display: flex; gap: 0.5rem;">
+          <input type="text" id="message-input" placeholder="Type message..." style="flex: 1;" onkeypress="if(event.key==='Enter')sendMessage()">
+          <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE SESSION MODAL WITH TIMER -->
+  <div id="live-session-modal" class="modal" onclick="if(event.target===this)closeLiveSession()">
+    <div class="modal-content">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h2>📹 Live Learning Session</h2>
+        <span id="live-status-badge" class="session-status status-ongoing">ONGOING</span>
+      </div>
+      
+      <div class="timer-display">
+        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">SESSION TIMER</div>
+        <div class="time" id="session-timer">00:00:00</div>
+        <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.5rem;">Minimum: 15 minutes required</div>
+      </div>
+      
+      <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; text-align: center;">
+        <div style="font-weight: 600; margin-bottom: 0.5rem;">Meeting Link</div>
+        <a id="meet-link" href="#" target="_blank" class="btn btn-primary w-full" style="text-decoration: none;">Join Google Meet</a>
+      </div>
+      
+      <div class="confirmation-box">
+        <div class="confirm-status">
+          <div style="font-size: 0.875rem; color: var(--text-light);">Your Status</div>
+          <div id="my-confirm-status" style="font-weight: 600; color: var(--warning);">⏳ Pending</div>
+        </div>
+        <div class="confirm-status">
+          <div style="font-size: 0.875rem; color: var(--text-light);">Partner Status</div>
+          <div id="partner-confirm-status" style="font-weight: 600; color: var(--warning);">⏳ Pending</div>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+        <button id="btn-start-session" class="btn btn-primary w-full" onclick="startSession()">▶️ Start Session</button>
+        <button id="btn-complete-session" class="btn btn-success w-full btn-disabled" onclick="completeSession()" disabled style="display: none;">
+          ⏱ Wait 15 min
+        </button>
+        <button class="btn btn-secondary w-full" onclick="closeLiveSession()">Close</button>
+      </div>
+      
+      <div class="anti-cheat-notice">
+        <strong>🛡️ Anti-Cheat Protection Active:</strong><br>
+        • Dual confirmation required for validation<br>
+        • 15-minute minimum learning time enforced<br>
+        • All actions logged with timestamps<br>
+        • Invalid sessions do not earn points
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOK SESSION MODAL -->
+  <div id="book-modal" class="modal" onclick="if(event.target===this)document.getElementById('book-modal').classList.remove('active')">
+    <div class="modal-content">
+      <h2 style="margin-bottom: 1.5rem;">📅 Book Session</h2>
+      <form id="book-form">
+        <div class="form-group">
+          <label>Skill to Learn</label>
+          <select id="book-skill" required class="w-full"></select>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="book-date" required>
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input type="time" id="book-time" required>
+        </div>
+        <div class="form-group">
+          <label>Duration</label>
+          <select id="book-duration">
+            <option value="30">30 minutes</option>
+            <option value="60" selected>1 hour</option>
+            <option value="90">1.5 hours</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Meeting Link (optional)</label>
+          <input type="url" id="book-meet" placeholder="https://meet.google.com/...">
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea id="book-notes" placeholder="What do you want to learn?"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Send Request</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // GLOBALS
+    const API = 'http://localhost:5000';
+    let currentUser = null;
+    let token = localStorage.getItem('token');
+    let socket = null;
+    let currentChatUser = null;
+    let activeSessionId = null;
+    let sessionTimerInterval = null;
+    let tempSkills = { teach: [], want: [] };
+
+    // INIT
+    document.addEventListener('DOMContentLoaded', () => {
+      if (token) fetchProfile();
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('book-date').min = today;
+    });
+
+    // NAVIGATION
+    function showPage(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(`page-${page}`).classList.add('active');
+      document.getElementById('notifications-panel').style.display = 'none';
+      
+      if (page !== 'login' && page !== 'register') {
+        document.getElementById('navbar').classList.remove('hidden');
+        if (page === 'dashboard') loadDashboard();
+        if (page === 'discover') loadMatches();
+        if (page === 'sessions') loadSessions('upcoming');
+        if (page === 'chat') loadChatList();
+      } else {
+        document.getElementById('navbar').classList.add('hidden');
+      }
+    }
+
+    // AUTH
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const res = await fetch(`${API}/login`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          email: document.getElementById('login-email').value,
+          password: document.getElementById('login-password').value
+        })
+      });
+      const data = await res.json();
+      if (data.token) {
+        token = data.token;
+        currentUser = data.user;
+        localStorage.setItem('token', token);
+        initSocket();
+        showPage('dashboard');
+      } else {
+        alert(data.error || 'Login failed');
+      }
+    });
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const res = await fetch(`${API}/register`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          name: document.getElementById('reg-name').value,
+          email: document.getElementById('reg-email').value,
+          password: document.getElementById('reg-password').value,
+          bio: document.getElementById('reg-bio').value,
+          location: document.getElementById('reg-location').value,
+          skills_have: tempSkills.teach,
+          skills_want: tempSkills.want
+        })
+      });
+      if (res.ok) {
+        alert('Account created! Please login.');
+        showPage('login');
+      }
+    });
+
+    async function fetchProfile() {
+      const res = await fetch(`${API}/profile`, {
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      if (res.ok) {
+        currentUser = await res.json();
+        initSocket();
+        showPage('dashboard');
+      } else {
+        localStorage.removeItem('token');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      token = null;
+      currentUser = null;
+      location.reload();
+    }
+
+    // SOCKET
+    function initSocket() {
+      socket = io(API);
+      socket.emit('join', currentUser.id);
+      
+      socket.on('notification', (data) => {
+        alert(data.message);
+        loadNotifications();
+      });
+      
+      socket.on('session_started', (data) => {
+        alert('Session started by partner!');
+        if (activeSessionId === data.session_id) {
+          document.getElementById('btn-start-session').style.display = 'none';
+          document.getElementById('btn-complete-session').style.display = 'block';
+          startTimerUpdates();
+        }
+      });
+      
+      socket.on('confirmation_needed', () => {
+        alert('Partner completed session! Please confirm.');
+        updateLiveStatus();
+      });
+      
+      socket.on('session_completed', (data) => {
+        alert(`Session validated! +${data.points} points!`);
+        closeLiveSession();
+        loadSessions('upcoming');
+      });
+    }
+
+    // SKILLS
+    function addSkill(type) {
+      const input = document.getElementById(`${type}-input`);
+      const levelSelect = document.getElementById(`${type}-level`);
+      const skill = input.value.trim();
+      
+      if (skill) {
+        const skillObj = {
+          name: skill,
+          proficiency: type === 'teach' ? (levelSelect?.value || 'Intermediate') : 'Beginner'
+        };
+        
+        if (!tempSkills[type].find(s => s.name.toLowerCase() === skill.toLowerCase())) {
+          tempSkills[type].push(skillObj);
+          renderSkills(type);
+          input.value = '';
+        }
+      }
+    }
+
+    function renderSkills(type) {
+      const container = document.getElementById(`${type}-tags`);
+      container.innerHTML = tempSkills[type].map(s => `
+        <span style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.5rem 1rem; border-radius: 2rem; font-size: 0.875rem;">
+          ${s.name} ${type === 'teach' ? `(${s.proficiency})` : ''}
+          <button type="button" onclick="removeSkill('${type}', '${s.name}')" style="background: none; border: none; color: white; margin-left: 0.5rem; cursor: pointer;">×</button>
+        </span>
+      `).join('');
+    }
+
+    function removeSkill(type, name) {
+      tempSkills[type] = tempSkills[type].filter(s => s.name !== name);
+      renderSkills(type);
+    }
+
+    // DASHBOARD
+    async function loadDashboard() {
+      document.getElementById('dash-name').textContent = currentUser.name;
+      document.getElementById('dash-avatar').textContent = currentUser.name[0];
+      document.getElementById('dash-location').textContent = `📍 ${currentUser.location || 'No location'}`;
+      document.getElementById('dash-level').textContent = currentUser.level;
+      document.getElementById('dash-points').textContent = currentUser.points;
+      document.getElementById('nav-points').textContent = `${currentUser.points} pts`;
+      
+      const res = await fetch(`${API}/smart-matches`, {
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      const matches = await res.json();
+      
+      document.getElementById('top-matches').innerHTML = matches.slice(0, 3).map(m => createMatchCard(m)).join('');
+    }
+
+    function createMatchCard(m) {
+      return `
+        <div class="match-card">
+          <div class="match-score">${m.match_score}%</div>
+          <h3>${m.name} ${m.is_perfect_match ? '<span style="background: linear-gradient(135deg, #ec4899, #f472b6); color: white; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem;">✨ Perfect</span>' : ''}</h3>
+          <p style="color: var(--text-light); font-size: 0.875rem;">📍 ${m.location || 'Unknown'} • ⭐ ${parseFloat(m.avg_rating || 0).toFixed(1)}</p>
+          <div style="margin: 1rem 0;">
+            ${m.they_teach_i_want.length > 0 ? `<div style="background: #f3f4f6; padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;"><strong>They teach:</strong> ${m.they_teach_i_want.join(', ')}</div>` : ''}
+            ${m.i_teach_they_want.length > 0 ? `<div style="background: #f3f4f6; padding: 0.5rem; border-radius: 0.5rem; font-size: 0.9rem;"><strong>You teach:</strong> ${m.i_teach_they_want.join(', ')}</div>` : ''}
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-primary btn-sm" onclick="startChat(${m.id}, '${m.name}')" style="flex: 1;">Chat</button>
+            <button class="btn btn-success btn-sm" onclick="quickBook(${m.id}, '${m.name}')" style="flex: 1;">Book</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // MATCHES
+    async function loadMatches() {
+      const res = await fetch(`${API}/smart-matches`, {
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      const matches = await res.json();
+      document.getElementById('all-matches').innerHTML = matches.map(m => createMatchCard(m)).join('');
+    }
+
+    // SESSIONS
+    async function loadSessions(filter) {
+      const res = await fetch(`${API}/sessions`, {
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      const sessions = await res.json();
+      
+      let filtered = sessions;
+      if (filter === 'upcoming') {
+        filtered = sessions.filter(s => ['pending', 'accepted', 'ongoing'].includes(s.status));
+      } else if (filter === 'completed') {
+        filtered = sessions.filter(s => s.status === 'completed');
+      }
+      
+      const container = document.getElementById('sessions-list');
+      if (filtered.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-light);">No sessions found</p>';
+        return;
+      }
+      
+      container.innerHTML = filtered.map(s => {
+        const isRequester = s.requester_id === currentUser.id;
+        const other = isRequester ? s.partner_name : s.requester_name;
+        const canJoin = s.status === 'ongoing';
+        const canConfirm = s.status === 'ongoing' && !s.actual_end_time;
+        
+        return `
+          <div class="session-card">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div>
+                <h4>${s.skill_taught} with ${other}</h4>
+                <p style="color: var(--text-light); font-size: 0.875rem; margin-top: 0.5rem;">
+                  📅 ${new Date(s.session_date).toLocaleDateString()} at ${s.session_time} • ⏱️ ${s.duration_minutes} min
+                </p>
+                ${s.meeting_link ? `<a href="${s.meeting_link}" target="_blank" style="color: var(--primary); font-size: 0.875rem;">${s.meeting_link}</a>` : ''}
+              </div>
+              <span class="session-status status-${s.status}">${s.status}</span>
+            </div>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+              ${s.status === 'pending' && !isRequester ? `
+                <button class="btn btn-success btn-sm" onclick="respondSession(${s.id}, 'accept')">Accept</button>
+                <button class="btn btn-danger btn-sm" onclick="respondSession(${s.id}, 'reject')">Reject</button>
+              ` : ''}
+              ${canJoin ? `<button class="btn btn-primary btn-sm" onclick="openLiveSession(${s.id})">Join Session</button>` : ''}
+              ${s.status === 'completed' && s.is_valid ? `<span style="color: var(--success); font-size: 0.875rem;">✅ Validated (+150 pts)</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function respondSession(id, action) {
+      await fetch(`${API}/sessions/${id}/${action}`, {
+        method: 'PUT',
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      loadSessions('upcoming');
+    }
+
+    // LIVE SESSION WITH TIMER
+    async function openLiveSession(sessionId) {
+      activeSessionId = sessionId;
+      document.getElementById('live-session-modal').classList.add('active');
+      updateLiveStatus();
+      sessionTimerInterval = setInterval(updateLiveStatus, 2000);
+    }
+
+    async function updateLiveStatus() {
+      if (!activeSessionId) return;
+      
+      const res = await fetch(`${API}/sessions/${activeSessionId}/status`, {
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      const status = await res.json();
+      
+      // Update timer display
+      document.getElementById('session-timer').textContent = status.duration_formatted || '00:00:00';
+      
+      // Update meeting link
+      if (status.meeting_link) {
+        document.getElementById('meet-link').href = status.meeting_link;
+      }
+      
+      // Show/hide buttons based on state
+      if (status.status === 'accepted') {
+        document.getElementById('btn-start-session').style.display = 'block';
+        document.getElementById('btn-complete-session').style.display = 'none';
+      } else if (status.status === 'ongoing') {
+        document.getElementById('btn-start-session').style.display = 'none';
+        document.getElementById('btn-complete-session').style.display = 'block';
+        
+        // Enable complete button only after 15 min (900 seconds)
+        const btn = document.getElementById('btn-complete-session');
+        if (status.can_complete) {
+          btn.disabled = false;
+          btn.textContent = '✅ Complete Session';
+          btn.classList.remove('btn-disabled');
+        } else {
+          btn.disabled = true;
+          btn.textContent = `⏱ Wait ${Math.ceil(status.time_remaining / 60)} min`;
+          btn.classList.add('btn-disabled');
+        }
+      } else if (status.status === 'completed') {
+        closeLiveSession();
+        alert('Session already completed!');
+        return;
+      }
+      
+      // Update confirmation status
+      document.getElementById('my-confirm-status').textContent = status.my_confirmation ? '✅ Confirmed' : '⏳ Pending';
+      document.getElementById('my-confirm-status').style.color = status.my_confirmation ? 'var(--success)' : 'var(--warning)';
+      
+      document.getElementById('partner-confirm-status').textContent = status.partner_confirmation ? '✅ Confirmed' : '⏳ Pending';
+      document.getElementById('partner-confirm-status').style.color = status.partner_confirmation ? 'var(--success)' : 'var(--warning)';
+    }
+
+    async function startSession() {
+      const res = await fetch(`${API}/sessions/${activeSessionId}/start`, {
+        method: 'POST',
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      
+      if (res.ok) {
+        document.getElementById('btn-start-session').style.display = 'none';
+        document.getElementById('btn-complete-session').style.display = 'block';
+        updateLiveStatus();
+      }
+    }
+
+    async function completeSession() {
+      const res = await fetch(`${API}/sessions/${activeSessionId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({})
+      });
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        alert(data.message || data.error);
+        return;
+      }
+      
+      if (data.validated) {
+        alert(`Session validated! You earned ${data.points_earned} points!`);
+        closeLiveSession();
+        loadSessions('upcoming');
+      } else if (data.success) {
+        alert('Confirmation recorded. Waiting for partner...');
+        document.getElementById('btn-complete-session').disabled = true;
+        updateLiveStatus();
+      }
+    }
+
+    function closeLiveSession() {
+      if (sessionTimerInterval) {
+        clearInterval(sessionTimerInterval);
+        sessionTimerInterval = null;
+      }
+      activeSessionId = null;
+      document.getElementById('live-session-modal').classList.remove('active');
+    }
+
+    // BOOKING
+    function quickBook(userId, userName) {
+      currentChatUser = { id: userId, name: userName };
+      openBookModal();
+    }
+
+    function openBookModal() {
+      if (!currentChatUser) return;
+      
+      // Populate skills (what they teach that I want)
+      const select = document.getElementById('book-skill');
+      select.innerHTML = '<option value="">Select skill...</option>';
+      
+      // For demo, just add some options - in real app, fetch from profile
+      select.innerHTML += `
+        <option value="JavaScript">JavaScript</option>
+        <option value="Python">Python</option>
+        <option value="Guitar">Guitar</option>
+        <option value="Cooking">Cooking</option>
+      `;
+      
+      document.getElementById('book-modal').classList.add('active');
+    }
+
+    document.getElementById('book-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const res = await fetch(`${API}/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          partner_id: currentChatUser.id,
+          skill_taught: document.getElementById('book-skill').value,
+          session_date: document.getElementById('book-date').value,
+          session_time: document.getElementById('book-time').value,
+          duration: parseInt(document.getElementById('book-duration').value),
+          meeting_link: document.getElementById('book-meet').value || null,
+          notes: document.getElementById('book-notes').value
+        })
+      });
+      
+      if (res.ok) {
+        alert('Session request sent!');
+        document.getElementById('book-modal').classList.remove('active');
+        loadSessions('upcoming');
+      }
+    });
+
+    // CHAT
+    async function loadChatList() {
+      const res = await fetch(`${API}/chat-list`, {
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      const chats = await res.json();
+      
+      const container = document.getElementById('chat-list');
+      container.innerHTML = '<div style="padding: 1rem; font-weight: 600; border-bottom: 1px solid var(--border);">Conversations</div>';
+      
+      chats.forEach(chat => {
+        container.innerHTML += `
+          <div class="chat-user" onclick="selectChat(${chat.id}, '${chat.name}')">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 600;">${chat.name} ${chat.is_online ? '🟢' : ''}</span>
+              ${chat.unread_count > 0 ? `<span style="background: var(--danger); color: white; padding: 0.125rem 0.5rem; border-radius: 1rem; font-size: 0.75rem;">${chat.unread_count}</span>` : ''}
+            </div>
+            <div style="font-size: 0.875rem; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${chat.last_message || 'No messages yet'}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    async function startChat(userId, userName) {
+      showPage('chat');
+      setTimeout(() => selectChat(userId, userName), 100);
+    }
+
+    async function selectChat(userId, userName) {
+      currentChatUser = { id: userId, name: userName };
+      document.getElementById('chat-header').textContent = `Chat with ${userName}`;
+      document.getElementById('btn-book-session').style.display = 'inline-block';
+      
+      // Load messages
+      const res = await fetch(`${API}/messages/${userId}`, {
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      const messages = await res.json();
+      
+      const container = document.getElementById('chat-messages');
+      container.innerHTML = messages.map(m => `
+        <div class="message ${m.sender_id === currentUser.id ? 'sent' : 'received'}">
+          ${m.message}
+        </div>
+      `).join('');
+      
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('message-input');
+      const text = input.value.trim();
+      if (!text || !currentChatUser) return;
+      
+      await fetch(`${API}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          receiver_id: currentChatUser.id,
+          message: text
+        })
+      });
+      
+      document.getElementById('chat-messages').innerHTML += `
+        <div class="message sent">${text}</div>
+      `;
+      input.value = '';
+      document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+    }
+
+    // NOTIFICATIONS
+    async function loadNotifications() {
+      const res = await fetch(`${API}/notifications`, {
+        headers: {'Authorization': `Bearer ${token}`}
+      });
+      const data = await res.json();
+      
+      const badge = document.getElementById('notif-badge');
+      if (data.unread_count > 0) {
+        badge.textContent = data.unread_count;
+        badge.classList.remove('hidden');
+      }
+      
+      const list = document.getElementById('notifications-list');
+      list.innerHTML = data.notifications.map(n => `
+        <div style="padding: 1rem; border-bottom: 1px solid var(--border); ${n.is_read ? '' : 'background: #eff6ff;'}">
+          <div style="font-weight: 600; font-size: 0.875rem;">${n.title}</div>
+          <div style="font-size: 0.875rem; color: var(--text-light);">${n.message}</div>
+        </div>
+      `).join('');
+    }
+
+    function toggleNotifications() {
+      const panel = document.getElementById('notifications-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') loadNotifications();
+    }
+  </script>
+</body>
+</html>
