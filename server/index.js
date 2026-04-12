@@ -72,7 +72,16 @@ app.get("/", (req, res) => {
 app.post("/register", async (req, res) => {
   const { name, email, password, bio, location, skills_have, skills_want } = req.body;
   
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: "Name, email, and password are required" });
+  }
+  
   try {
+    const existingUser = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const userResult = await pool.query(
       `INSERT INTO users (name, email, password, bio, location) 
@@ -286,10 +295,11 @@ app.get("/smart-matches", authenticateToken, async (req, res) => {
 // SKILL SUGGESTIONS
 app.get("/skill-suggestions/:input", async (req, res) => {
   try {
+    const input = `%${req.params.input}%`;
     const result = await pool.query(
       `SELECT suggested_skill, category FROM skill_suggestions 
        WHERE input_skill ILIKE $1 ORDER BY relevance_score DESC LIMIT 5`,
-      [req.params.input]
+      [input]
     );
     res.json(result.rows);
   } catch (err) {
@@ -608,6 +618,11 @@ app.get("/messages/:userId", authenticateToken, async (req, res) => {
 // Send message
 app.post("/messages", authenticateToken, async (req, res) => {
   const { receiver_id, message, message_type = 'text', reply_to } = req.body;
+  const trimmedMessage = typeof message === 'string' ? message.trim() : '';
+
+  if (!receiver_id || !trimmedMessage) {
+    return res.status(400).json({ error: "Receiver and message are required" });
+  }
   
   try {
     const receiver = await pool.query("SELECT id, name FROM users WHERE id = $1", [receiver_id]);
@@ -618,7 +633,7 @@ app.post("/messages", authenticateToken, async (req, res) => {
     const result = await pool.query(
       `INSERT INTO messages (sender_id, receiver_id, message, message_type, reply_to) 
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.user.userId, receiver_id, message, message_type, reply_to || null]
+      [req.user.userId, receiver_id, trimmedMessage, message_type, reply_to || null]
     );
     
     const messageWithSender = {
@@ -631,7 +646,7 @@ app.post("/messages", authenticateToken, async (req, res) => {
     await pool.query(
       `INSERT INTO notifications (user_id, type, title, message, related_id) 
        VALUES ($1, 'message', 'New Message', $2, $3)`,
-      [receiver_id, `${req.user.name}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`, result.rows[0].id]
+      [receiver_id, `${req.user.name}: ${trimmedMessage.substring(0, 50)}${trimmedMessage.length > 50 ? '...' : ''}`, result.rows[0].id]
     );
     
     // Real-time emit
@@ -712,14 +727,16 @@ io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
   
   socket.on("join", async (userId) => {
-    socket.join(`user_${userId}`);
-    console.log(`👤 User ${userId} joined`);
-    
-    // Update online status
-    await pool.query("UPDATE users SET is_online = TRUE WHERE id = $1", [userId]);
-    
-    // Broadcast to all that user is online
-    socket.broadcast.emit("user_status", { user_id: userId, is_online: true });
+    try {
+      socket.userId = userId;
+      socket.join(`user_${userId}`);
+      console.log(`👤 User ${userId} joined`);
+      
+      await pool.query("UPDATE users SET is_online = TRUE WHERE id = $1", [userId]);
+      socket.broadcast.emit("user_status", { user_id: userId, is_online: true });
+    } catch (err) {
+      console.error("Socket join error:", err);
+    }
   });
   
   // Typing indicators
@@ -754,6 +771,14 @@ io.on("connection", (socket) => {
   // Disconnect handling
   socket.on("disconnect", async () => {
     console.log("❌ Client disconnected:", socket.id);
+    if (socket.userId) {
+      try {
+        await pool.query("UPDATE users SET is_online = FALSE WHERE id = $1", [socket.userId]);
+        socket.broadcast.emit("user_status", { user_id: socket.userId, is_online: false });
+      } catch (err) {
+        console.error("Socket disconnect error:", err);
+      }
+    }
   });
 });
 
