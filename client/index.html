@@ -362,6 +362,181 @@
       color: var(--primary);
     }
     
+    .avatar-img {
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      font-size: 0 !important;
+      color: transparent !important;
+    }
+
+    .match-avatar.avatar-img {
+      text-indent: -9999px;
+    }
+
+    .proficiency-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .proficiency-chips button {
+      padding: 0.45rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--white);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+
+    .proficiency-chips button.active {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border-color: transparent;
+    }
+
+    .dashboard-main-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      min-height: 0;
+    }
+
+    .session-hub-card {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(236, 72, 153, 0.06));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.35rem 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .session-hub-card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .session-hub-meta {
+      font-size: 0.875rem;
+      color: var(--text-light);
+    }
+
+    .session-timer-big {
+      font-family: ui-monospace, monospace;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.05em;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .status-pill.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-pill.ready {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-pill.live {
+      background: #d1fae5;
+      color: #065f46;
+      animation: pulse-live 2s ease-in-out infinite;
+    }
+
+    .status-pill.done {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    @keyframes pulse-live {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+      50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    }
+
+    .mini-sessions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .mini-session-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.875rem 1rem;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      flex-wrap: wrap;
+    }
+
+    .mini-session-row .session-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .mini-session-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .form-hint {
+      font-size: 0.8rem;
+      color: var(--text-light);
+      margin-top: 0.35rem;
+    }
+
+    .profile-modal-avatar {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      margin: 0 auto 1rem;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: white;
+      font-weight: 600;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .profile-modal-avatar input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1330,16 +1505,18 @@
           
           <div class="form-group">
             <label>Skills You Teach</label>
+            <p class="form-hint">Type a skill, pick your level, then add.</p>
             <div class="skills-input-group">
-              <input type="text" id="teach-input" placeholder="e.g., Python">
-              <select id="teach-level">
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Expert">Expert</option>
-              </select>
+              <input type="text" id="teach-input" placeholder="e.g., Python — type to add">
               <button type="button" class="btn btn-primary" onclick="addSkill('teach')" style="width: auto;">
                 <i class="fas fa-plus"></i>
               </button>
+            </div>
+            <input type="hidden" id="teach-level" value="Intermediate">
+            <div class="proficiency-chips" id="reg-teach-level-chips" aria-label="Teaching proficiency">
+              <button type="button" data-level="Beginner">Beginner</button>
+              <button type="button" data-level="Intermediate" class="active">Intermediate</button>
+              <button type="button" data-level="Expert">Expert</button>
             </div>
             <div id="teach-tags" class="tags"></div>
           </div>
@@ -1374,7 +1551,9 @@
             <div class="profile-name" id="dash-name">User</div>
             <div class="profile-location" id="dash-location">📍 Location</div>
             <span class="profile-level" id="dash-level">Beginner</span>
-            
+            <button type="button" class="btn btn-secondary" onclick="openProfileModal()" style="width: 100%; margin-top: 1rem;">
+              <i class="fas fa-user-edit"></i> Edit profile
+            </button>
             <div class="stats-grid">
               <div class="stat-box">
                 <div class="stat-value" id="dash-points">0</div>
@@ -1388,15 +1567,19 @@
           </div>
         </aside>
 
-        <main class="main-content-area">
-          <div class="section-header">
-            <h2 class="section-title">🔥 Top Matches</h2>
-            <button class="btn btn-primary" onclick="showPage('discover')" style="width: auto;">
-              <i class="fas fa-search"></i> Find More
-            </button>
-          </div>
-          <div id="top-matches" class="matches-grid">
-            <p style="color: var(--text-light); text-align: center; padding: 2rem;">Loading matches...</p>
+        <main class="main-content-area dashboard-main-grid">
+          <div id="dashboard-session-hub"></div>
+
+          <div>
+            <div class="section-header">
+              <h2 class="section-title">🔥 Top matches</h2>
+              <button type="button" class="btn btn-primary" onclick="showPage('discover')" style="width: auto;">
+                <i class="fas fa-search"></i> Find more
+              </button>
+            </div>
+            <div id="top-matches" class="matches-grid">
+              <p style="color: var(--text-light); text-align: center; padding: 2rem;">Loading matches...</p>
+            </div>
           </div>
         </main>
       </div>
@@ -1438,7 +1621,7 @@
         <div class="chat-sidebar" id="chat-sidebar">
           <div class="chat-sidebar-header">
             <h3><i class="fas fa-comments"></i> Messages</h3>
-            <button class="input-action"><i class="fas fa-ellipsis-v"></i></button>
+            <button type="button" class="input-action" onclick="showPage('dashboard')" title="Home"><i class="fas fa-home"></i></button>
           </div>
           <div class="chat-search">
             <input type="text" placeholder="Search or start new chat" id="chat-search-input">
@@ -1476,13 +1659,13 @@
                 </div>
               </div>
               <div class="chat-header-actions">
-                <button onclick="openBookModal()" title="Book Session">
+                <button type="button" onclick="openBookModal()" title="Book session">
                   <i class="fas fa-calendar-plus"></i>
                 </button>
-                <button title="Video Call">
+                <button type="button" title="Open meeting link" onclick="openChatMeetingLink()">
                   <i class="fas fa-video"></i>
                 </button>
-                <button title="More">
+                <button type="button" title="Session shortcuts" onclick="showPage('sessions')">
                   <i class="fas fa-ellipsis-v"></i>
                 </button>
               </div>
@@ -1505,12 +1688,12 @@
 
             <!-- Input Area -->
             <div class="chat-input-container">
-              <button class="input-action">
+              <button type="button" class="input-action" onclick="focusMessageInput()" title="Focus message box">
                 <i class="far fa-smile"></i>
               </button>
               <div class="chat-input-wrapper">
                 <input type="text" id="message-input" placeholder="Type a message" onkeydown="handleMessageKeydown(event)">
-                <button class="input-action">
+                <button type="button" class="input-action" onclick="document.getElementById('chat-attach-input').click()" title="Attach file">
                   <i class="fas fa-paperclip"></i>
                 </button>
               </div>
@@ -1534,8 +1717,10 @@
       <div class="modal-body">
         <form id="book-form">
           <div class="form-group">
-            <label>Skill to Learn</label>
-            <select id="book-skill" required></select>
+            <label>Skill to learn</label>
+            <input type="text" id="book-skill" list="book-skill-suggestions" placeholder="Type a skill you want to learn" required autocomplete="off">
+            <datalist id="book-skill-suggestions"></datalist>
+            <p class="form-hint" id="book-skill-hint">Suggestions appear from your partner’s teaching skills when available.</p>
           </div>
           <div class="form-group">
             <label>Date</label>
@@ -1593,23 +1778,18 @@
           </a>
         </div>
         
-        <div class="confirmation-box">
-          <div class="confirm-status">
-            <div style="font-size: 0.875rem; color: var(--text-light);">Your Status</div>
-            <div id="my-confirm-status" style="font-weight: 600; color: var(--warning);">⏳ Pending</div>
-          </div>
-          <div class="confirm-status">
-            <div style="font-size: 0.875rem; color: var(--text-light);">Partner Status</div>
-            <div id="partner-confirm-status" style="font-weight: 600; color: var(--warning);">⏳ Pending</div>
+        <div class="confirmation-box" id="live-session-status-row">
+          <div class="confirm-status" style="grid-column: 1 / -1;">
+            <div style="font-size: 0.875rem; color: var(--text-light);">Session status</div>
+            <div id="live-session-status-label" style="font-weight: 600; color: var(--text);">—</div>
           </div>
         </div>
         
         <div class="anti-cheat-notice">
-          <strong><i class="fas fa-shield-alt"></i> Anti-Cheat Protection Active:</strong><br>
-          • Dual confirmation required for validation<br>
-          • 15-minute minimum learning time enforced<br>
-          • All actions logged with timestamps<br>
-          • Invalid sessions do not earn points
+          <strong><i class="fas fa-shield-alt"></i> Fair session rules:</strong><br>
+          • 15-minute minimum live time before you can complete and earn points<br>
+          • Timer runs only while the session status is Live<br>
+          • Complete awards both participants +150 points when requirements are met
         </div>
       </div>
       <div class="modal-footer">
@@ -1623,6 +1803,67 @@
       </div>
     </div>
   </div>
+
+  <!-- Edit profile modal -->
+  <div class="modal-overlay" id="profile-modal">
+    <div class="modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-user-edit"></i> Edit profile</h3>
+      </div>
+      <div class="modal-body">
+        <div class="profile-modal-avatar" id="profile-modal-avatar-wrap">
+          <span id="profile-modal-avatar-letter">U</span>
+          <input type="file" id="profile-avatar-input" accept="image/*">
+        </div>
+        <p class="form-hint" style="text-align: center; margin-bottom: 1rem;">Click the circle to upload a photo (max ~1.5MB recommended)</p>
+        <div class="form-group">
+          <label>Display name</label>
+          <input type="text" id="edit-name" required>
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="edit-location">
+        </div>
+        <div class="form-group">
+          <label>Bio</label>
+          <textarea id="edit-bio" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>New password <span class="form-hint">(optional)</span></label>
+          <input type="password" id="edit-password" placeholder="Leave blank to keep current" autocomplete="new-password">
+        </div>
+        <hr style="border: none; border-top: 1px solid var(--border); margin: 1.25rem 0;">
+        <div class="form-group">
+          <label>Skills you teach</label>
+          <div class="skills-input-group">
+            <input type="text" id="profile-teach-input" placeholder="Type a skill">
+            <button type="button" class="btn btn-primary" onclick="addProfileSkill('teach')" style="width: auto;"><i class="fas fa-plus"></i></button>
+          </div>
+          <input type="hidden" id="profile-teach-level" value="Intermediate">
+          <div class="proficiency-chips" id="profile-teach-level-chips">
+            <button type="button" data-level="Beginner">Beginner</button>
+            <button type="button" data-level="Intermediate" class="active">Intermediate</button>
+            <button type="button" data-level="Expert">Expert</button>
+          </div>
+          <div id="profile-teach-tags" class="tags"></div>
+        </div>
+        <div class="form-group">
+          <label>Skills you want to learn</label>
+          <div class="skills-input-group">
+            <input type="text" id="profile-want-input" placeholder="Type a skill">
+            <button type="button" class="btn btn-primary" onclick="addProfileSkill('want')" style="width: auto;"><i class="fas fa-plus"></i></button>
+          </div>
+          <div id="profile-want-tags" class="tags"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeProfileModal()" style="width: auto;">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveProfile()" style="width: auto;"><i class="fas fa-save"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="chat-attach-input" accept="image/*,.pdf" style="display: none;">
 
   <script>
     // ============================================
@@ -1638,7 +1879,12 @@
     let activeSessionId = null;
     let sessionTimerInterval = null;
     let tempSkills = { teach: [], want: [] };
+    let profileEditSkills = { teach: [], want: [] };
+    let profileImageDirty = false;
+    let pendingProfileImage = null;
     let typingTimeout = null;
+    let dashboardSessionTimerInterval = null;
+    let dashboardOngoingSessionId = null;
 
     // ============================================
     // INITIALIZATION
@@ -1673,12 +1919,64 @@
           }
         });
       }
+
+      document.querySelectorAll('#reg-teach-level-chips button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#reg-teach-level-chips button').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('teach-level').value = btn.dataset.level;
+        });
+      });
+
+      document.querySelectorAll('#profile-teach-level-chips button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#profile-teach-level-chips button').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('profile-teach-level').value = btn.dataset.level;
+        });
+      });
+
+      const avIn = document.getElementById('profile-avatar-input');
+      if (avIn) {
+        avIn.addEventListener('change', () => {
+          const f = avIn.files?.[0];
+          if (!f) return;
+          if (f.size > 1.8 * 1024 * 1024) {
+            alert('Image is too large. Please choose a file under 1.8MB.');
+            avIn.value = '';
+            return;
+          }
+          const r = new FileReader();
+          r.onload = () => {
+            pendingProfileImage = r.result;
+            profileImageDirty = true;
+            const wrap = document.getElementById('profile-modal-avatar-wrap');
+            const letter = document.getElementById('profile-modal-avatar-letter');
+            wrap.classList.add('avatar-img');
+            wrap.style.backgroundImage = `url("${r.result.replace(/"/g, '\\"')}")`;
+            letter.textContent = '';
+          };
+          r.readAsDataURL(f);
+        });
+      }
+
+      document.getElementById('chat-attach-input')?.addEventListener('change', (e) => {
+        const f = e.target.files?.[0];
+        if (f) alert('Attachment upload is not available yet. You can share links in chat.');
+        e.target.value = '';
+      });
     });
 
     // ============================================
     // NAVIGATION
     // ============================================
     function showPage(page) {
+      if (page !== 'dashboard') {
+        clearInterval(dashboardSessionTimerInterval);
+        dashboardSessionTimerInterval = null;
+        dashboardOngoingSessionId = null;
+      }
+
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(`page-${page}`).classList.add('active');
       
@@ -1744,11 +2042,12 @@
             skills_want: tempSkills.want
           })
         });
+        const regData = await res.json().catch(() => ({}));
         if (res.ok) {
           alert('Account created! Please login.');
           showPage('login');
         } else {
-          alert('Registration failed');
+          alert(regData.error || 'Registration failed');
         }
       } catch (err) {
         alert('Network error');
@@ -1781,7 +2080,42 @@
       }
     }
 
+    async function refreshCurrentUser() {
+      if (!token) return;
+      try {
+        const res = await fetch(`${API}/profile`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const profile = await res.json();
+        currentUser = {
+          ...profile,
+          stats: {
+            total_sessions: profile.total_sessions || 0,
+            avg_rating: profile.average_rating_received || profile.avg_rating || 0
+          }
+        };
+        document.getElementById('nav-points').textContent = `${currentUser.points} pts`;
+      } catch (e) { /* ignore */ }
+    }
+
+    function applyUserAvatar(el, user) {
+      if (!el || !user) return;
+      const url = user.profile_image;
+      if (url && String(url).startsWith('data:')) {
+        el.classList.add('avatar-img');
+        el.style.backgroundImage = `url("${String(url).replace(/"/g, '\\"')}")`;
+        el.textContent = '';
+      } else {
+        el.classList.remove('avatar-img');
+        el.style.backgroundImage = '';
+        el.textContent = (user.name || '?').charAt(0).toUpperCase();
+      }
+    }
+
     function logout() {
+      clearInterval(dashboardSessionTimerInterval);
+      dashboardSessionTimerInterval = null;
       localStorage.removeItem('token');
       token = null;
       currentUser = null;
@@ -1793,6 +2127,7 @@
     // SOCKET.IO
     // ============================================
     function initSocket() {
+      if (socket) socket.disconnect();
       socket = io(API);
       socket.emit('join', currentUser.id);
       
@@ -1841,18 +2176,17 @@
         if (activeSessionId === data.session_id) {
           document.getElementById('btn-start-session').style.display = 'none';
           document.getElementById('btn-complete-session').style.display = 'inline-flex';
-          startTimerUpdates();
+          updateLiveStatus();
         }
-      });
-      
-      socket.on('confirmation_needed', () => {
-        updateLiveStatus();
+        loadDashboard();
+        loadSessions('upcoming');
       });
       
       socket.on('session_completed', (data) => {
-        alert(`Session validated! +${data.points} points!`);
-        closeLiveSession();
+        if (activeSessionId === data.session_id) closeLiveSession();
         loadSessions('upcoming');
+        loadDashboard();
+        refreshCurrentUser();
       });
     }
 
@@ -1893,25 +2227,321 @@
       renderSkills(type);
     }
 
+    function syncProfileSkillsFromUser() {
+      profileEditSkills = {
+        teach: (currentUser.skills_have || []).map((s) => ({
+          name: s.skill_name,
+          proficiency: s.proficiency || 'Intermediate'
+        })),
+        want: (currentUser.skills_want || []).map((s) => ({
+          name: s.skill_name
+        }))
+      };
+    }
+
+    function renderProfileSkillTags(type) {
+      const container = document.getElementById(`profile-${type}-tags`);
+      if (!container) return;
+      const list = profileEditSkills[type];
+      container.innerHTML = list
+        .map(
+          (s) => `
+        <span class="tag">
+          ${escapeHtml(s.name)} ${type === 'teach' ? `(${escapeHtml(s.proficiency)})` : ''}
+          <button type="button" onclick="removeProfileSkill(${JSON.stringify(type)}, ${JSON.stringify(s.name)})">×</button>
+        </span>`
+        )
+        .join('');
+    }
+
+    function addProfileSkill(type) {
+      const input = document.getElementById(`profile-${type}-input`);
+      const skill = input.value.trim();
+      if (!skill) return;
+      if (type === 'teach') {
+        const prof = document.getElementById('profile-teach-level').value || 'Intermediate';
+        if (!profileEditSkills.teach.find((x) => x.name.toLowerCase() === skill.toLowerCase())) {
+          profileEditSkills.teach.push({ name: skill, proficiency: prof });
+          renderProfileSkillTags('teach');
+          input.value = '';
+        }
+      } else {
+        if (!profileEditSkills.want.find((x) => x.name.toLowerCase() === skill.toLowerCase())) {
+          profileEditSkills.want.push({ name: skill });
+          renderProfileSkillTags('want');
+          input.value = '';
+        }
+      }
+    }
+
+    function removeProfileSkill(type, name) {
+      profileEditSkills[type] = profileEditSkills[type].filter((s) => s.name !== name);
+      renderProfileSkillTags(type);
+    }
+
+    function openProfileModal() {
+      if (!currentUser) return;
+      syncProfileSkillsFromUser();
+      document.getElementById('edit-name').value = currentUser.name || '';
+      document.getElementById('edit-location').value = currentUser.location || '';
+      document.getElementById('edit-bio').value = currentUser.bio || '';
+      document.getElementById('edit-password').value = '';
+      profileImageDirty = false;
+      pendingProfileImage = null;
+      const wrap = document.getElementById('profile-modal-avatar-wrap');
+      const letter = document.getElementById('profile-modal-avatar-letter');
+      document.getElementById('profile-avatar-input').value = '';
+      if (currentUser.profile_image && String(currentUser.profile_image).startsWith('data:')) {
+        wrap.classList.add('avatar-img');
+        wrap.style.backgroundImage = `url("${String(currentUser.profile_image).replace(/"/g, '\\"')}")`;
+        letter.textContent = '';
+      } else {
+        wrap.classList.remove('avatar-img');
+        wrap.style.backgroundImage = '';
+        letter.textContent = (currentUser.name || '?').charAt(0).toUpperCase();
+      }
+      document.querySelectorAll('#profile-teach-level-chips button').forEach((b) => {
+        b.classList.toggle('active', b.dataset.level === 'Intermediate');
+      });
+      document.getElementById('profile-teach-level').value = 'Intermediate';
+      renderProfileSkillTags('teach');
+      renderProfileSkillTags('want');
+      document.getElementById('profile-modal').classList.add('active');
+    }
+
+    function closeProfileModal() {
+      document.getElementById('profile-modal').classList.remove('active');
+    }
+
+    async function saveProfile() {
+      const name = document.getElementById('edit-name').value.trim();
+      if (!name) {
+        alert('Name is required');
+        return;
+      }
+      const body = {
+        name,
+        bio: document.getElementById('edit-bio').value,
+        location: document.getElementById('edit-location').value,
+        skills_have: profileEditSkills.teach,
+        skills_want: profileEditSkills.want.map((s) => ({ name: s.name }))
+      };
+      const pw = document.getElementById('edit-password').value;
+      if (pw) body.password = pw;
+      if (profileImageDirty && pendingProfileImage) body.profile_image = pendingProfileImage;
+
+      try {
+        const res = await fetch(`${API}/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || 'Update failed');
+        }
+        currentUser = {
+          ...data,
+          stats: {
+            total_sessions: data.total_sessions || 0,
+            avg_rating: data.average_rating_received || data.avg_rating || 0
+          }
+        };
+        profileImageDirty = false;
+        pendingProfileImage = null;
+        applyUserAvatar(document.getElementById('dash-avatar'), currentUser);
+        document.getElementById('dash-name').textContent = currentUser.name;
+        document.getElementById('dash-location').textContent = `📍 ${currentUser.location || 'No location'}`;
+        document.getElementById('nav-points').textContent = `${currentUser.points} pts`;
+        closeProfileModal();
+        loadDashboard();
+      } catch (e) {
+        alert(e.message || 'Could not save profile');
+      }
+    }
+
     // ============================================
     // DASHBOARD
     // ============================================
+    function sessionStatusPill(status) {
+      const map = {
+        pending: ['Pending', 'pending'],
+        accepted: ['Ready', 'ready'],
+        ongoing: ['Live', 'live'],
+        completed: ['Completed', 'done'],
+        cancelled: ['Cancelled', 'pending']
+      };
+      const x = map[status] || [status, 'pending'];
+      return `<span class="status-pill ${x[1]}">${x[0]}</span>`;
+    }
+
+    function matchAvatarHtml(m) {
+      const img = m.profile_image && String(m.profile_image).startsWith('data:');
+      if (img) {
+        const safe = String(m.profile_image).replace(/"/g, '&quot;');
+        return `<div class="match-avatar avatar-img" style="background-image:url(&quot;${safe}&quot;)"></div>`;
+      }
+      return `<div class="match-avatar">${m.name.charAt(0)}</div>`;
+    }
+
+    function renderDashboardSessionHub(sessions) {
+      const hub = document.getElementById('dashboard-session-hub');
+      if (!hub) return;
+
+      const upcomingMini = sessions.filter((s) =>
+        ['pending', 'accepted', 'ongoing'].includes(s.status)
+      );
+      const focus =
+        upcomingMini.find((s) => s.status === 'ongoing') ||
+        upcomingMini.find((s) => s.status === 'accepted') ||
+        upcomingMini.find((s) => s.status === 'pending');
+
+      if (!focus && upcomingMini.length === 0) {
+        hub.innerHTML = `
+          <div class="session-hub-card" style="grid-template-columns: 1fr;">
+            <div>
+              <h3>Sessions <span class="status-pill ready">None yet</span></h3>
+              <p class="session-hub-meta">Book a session from Discover or chat — it will show up here with a live timer when you start.</p>
+              <button type="button" class="btn btn-secondary" onclick="showPage('sessions')" style="width: auto; margin-top: 0.75rem;">Go to My Sessions</button>
+            </div>
+          </div>`;
+        return;
+      }
+
+      const isReq = focus.requester_id === currentUser.id;
+      const other = isReq ? focus.partner_name : focus.requester_name;
+      const pill = sessionStatusPill(focus.status);
+
+      let actions = '';
+      if (focus.status === 'accepted') {
+        actions = `
+          <div style="display:flex;flex-direction:column;gap:0.5rem;align-items:flex-end;">
+            <button type="button" class="btn btn-primary" onclick="openLiveSession(${focus.id})" style="width:auto;">
+              <i class="fas fa-video"></i> Start session
+            </button>
+            <span class="session-hub-meta">Timer starts when someone presses Start in the live room.</span>
+          </div>`;
+      } else if (focus.status === 'ongoing') {
+        actions = `
+          <div style="display:flex;flex-direction:column;gap:0.5rem;align-items:flex-end;text-align:right;">
+            <div style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;">Elapsed</div>
+            <div class="session-timer-big" id="dash-live-timer">00:00:00</div>
+            <button type="button" class="btn btn-primary" onclick="openLiveSession(${focus.id})" style="width:auto;">
+              <i class="fas fa-video"></i> Open room
+            </button>
+          </div>`;
+      } else {
+        actions = `
+          <div style="display:flex;flex-direction:column;gap:0.5rem;align-items:flex-end;">
+            <span class="session-hub-meta">${isReq ? 'Waiting for your partner to respond.' : 'Your response is needed.'}</span>
+            <button type="button" class="btn btn-primary" onclick="showPage('sessions')" style="width:auto;">Open sessions</button>
+          </div>`;
+      }
+
+      const miniHtml =
+        upcomingMini.length > 1
+          ? `<div style="margin-top:1rem;"><div style="font-size:0.8rem;font-weight:700;color:var(--text-light);margin-bottom:0.5rem;">UPCOMING</div>
+          <div class="mini-sessions-list">
+            ${upcomingMini
+              .slice(0, 6)
+              .map((s) => {
+                const ir = s.requester_id === currentUser.id;
+                const o = ir ? s.partner_name : s.requester_name;
+                return `<div class="mini-session-row">
+              <div>
+                <div class="session-title">${escapeHtml(s.skill_taught)} · ${escapeHtml(o)}</div>
+                <div class="session-hub-meta" style="margin-top:0.25rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                  ${new Date(s.session_date).toLocaleDateString()}
+                  ${sessionStatusPill(s.status)}
+                </div>
+              </div>
+              <div class="mini-session-actions">
+                ${s.status === 'accepted' || s.status === 'ongoing'
+                  ? `<button type="button" class="btn btn-primary" onclick="openLiveSession(${s.id})" style="width:auto;font-size:0.85rem;padding:0.45rem 0.75rem;">Room</button>`
+                  : ''}
+              </div>
+            </div>`;
+              })
+              .join('')}
+          </div></div>`
+          : '';
+
+      hub.innerHTML = `
+        <div class="session-hub-card">
+          <div>
+            <h3>${escapeHtml(focus.skill_taught)} ${pill}</h3>
+            <p class="session-hub-meta">With <strong>${escapeHtml(other)}</strong></p>
+            <p class="session-hub-meta">📅 ${new Date(focus.session_date).toLocaleDateString()} · ${focus.session_time} · ${focus.duration_minutes} min</p>
+          </div>
+          ${actions}
+        </div>
+        ${miniHtml}
+      `;
+    }
+
+    function startDashboardLiveTimer(sessions) {
+      clearInterval(dashboardSessionTimerInterval);
+      dashboardSessionTimerInterval = null;
+      dashboardOngoingSessionId = null;
+      const og = sessions.find((s) => s.status === 'ongoing');
+      if (!og) return;
+      dashboardOngoingSessionId = og.id;
+      const tick = async () => {
+        if (!dashboardOngoingSessionId || !token) return;
+        try {
+          const r = await fetch(`${API}/sessions/${dashboardOngoingSessionId}/status`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!r.ok) return;
+          const s = await r.json();
+          const tEl = document.getElementById('dash-live-timer');
+          if (tEl) tEl.textContent = s.duration_formatted;
+        } catch (e) { /* ignore */ }
+      };
+      tick();
+      dashboardSessionTimerInterval = setInterval(tick, 1000);
+    }
+
     async function loadDashboard() {
+      if (!currentUser) return;
       document.getElementById('dash-name').textContent = currentUser.name;
-      document.getElementById('dash-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+      applyUserAvatar(document.getElementById('dash-avatar'), currentUser);
       document.getElementById('dash-location').textContent = `📍 ${currentUser.location || 'No location'}`;
       document.getElementById('dash-level').textContent = currentUser.level;
       document.getElementById('dash-points').textContent = currentUser.points;
       document.getElementById('nav-points').textContent = `${currentUser.points} pts`;
-      document.getElementById('dash-sessions').textContent = currentUser.stats?.total_sessions || currentUser.total_sessions || 0;
-      
+      document.getElementById('dash-sessions').textContent =
+        currentUser.stats?.total_sessions || currentUser.total_sessions || 0;
+
+      clearInterval(dashboardSessionTimerInterval);
+      dashboardSessionTimerInterval = null;
+      dashboardOngoingSessionId = null;
+
+      let sessions = [];
+      try {
+        const sr = await fetch(`${API}/sessions`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (sr.ok) sessions = await sr.json();
+      } catch (e) {
+        console.error('Sessions fetch:', e);
+      }
+
+      renderDashboardSessionHub(sessions);
+      startDashboardLiveTimer(sessions);
+
       try {
         const res = await fetch(`${API}/smart-matches`, {
-          headers: {'Authorization': `Bearer ${token}`}
+          headers: { Authorization: `Bearer ${token}` }
         });
         const matches = await res.json();
-        
-        document.getElementById('top-matches').innerHTML = matches.slice(0, 3).map(m => createMatchCard(m)).join('');
+        document.getElementById('top-matches').innerHTML =
+          matches.length === 0
+            ? '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No matches yet — add skills to your profile.</p>'
+            : matches.slice(0, 3).map((m) => createMatchCard(m)).join('');
       } catch (err) {
         console.error('Failed to load matches:', err);
       }
@@ -1922,7 +2552,7 @@
         <div class="match-card">
           <div class="match-score">${m.match_score}%</div>
           <div class="match-header">
-            <div class="match-avatar">${m.name.charAt(0)}</div>
+            ${matchAvatarHtml(m)}
             <div class="match-info">
               <h4>${m.name} ${m.is_perfect_match ? '<span class="perfect-match-badge">✨ Perfect Match</span>' : ''}</h4>
               <p>📍 ${m.location || 'Unknown'} • ⭐ ${parseFloat(m.avg_rating || 0).toFixed(1)}</p>
@@ -1931,10 +2561,10 @@
           ${m.they_teach_i_want.length > 0 ? `<div class="skills-match"><strong>They teach you:</strong> ${m.they_teach_i_want.join(', ')}</div>` : ''}
           ${m.i_teach_they_want.length > 0 ? `<div class="skills-match"><strong>You teach them:</strong> ${m.i_teach_they_want.join(', ')}</div>` : ''}
           <div class="match-actions">
-            <button class="btn btn-primary" onclick='startChat(${m.id}, ${JSON.stringify(m.name)})'>
+            <button type="button" class="btn btn-primary" onclick='startChat(${m.id}, ${JSON.stringify(m.name)})'>
               <i class="fas fa-comment"></i> Chat
             </button>
-            <button class="btn btn-secondary" onclick='quickBook(${m.id}, ${JSON.stringify(m.name)})'>
+            <button type="button" class="btn btn-secondary" onclick='quickBook(${m.id}, ${JSON.stringify(m.name)})'>
               <i class="fas fa-calendar"></i> Book
             </button>
           </div>
@@ -1983,28 +2613,34 @@
         container.innerHTML = filtered.map(s => {
           const isRequester = s.requester_id === currentUser.id;
           const other = isRequester ? s.partner_name : s.requester_name;
+          const pill = sessionStatusPill(s.status);
           
           return `
             <div class="session-card">
               <div class="session-info">
-                <h4>${s.skill_taught} with ${other}</h4>
+                <h4>${escapeHtml(s.skill_taught)} with ${escapeHtml(other)}</h4>
                 <div class="session-meta">
                   📅 ${new Date(s.session_date).toLocaleDateString()} at ${s.session_time} • ⏱️ ${s.duration_minutes} min
                 </div>
-                <span class="session-status status-${s.status}">${s.status}</span>
+                <div style="margin-top:0.5rem;">${pill}</div>
               </div>
-              <div style="display: flex; gap: 0.5rem;">
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                 ${s.status === 'pending' && !isRequester ? `
-                  <button class="btn btn-primary" onclick="respondSession(${s.id}, 'accept')" style="width: auto;">
+                  <button type="button" class="btn btn-primary" onclick="respondSession(${s.id}, 'accept')" style="width: auto;">
                     <i class="fas fa-check"></i> Accept
                   </button>
-                  <button class="btn btn-secondary" onclick="respondSession(${s.id}, 'reject')" style="width: auto;">
+                  <button type="button" class="btn btn-secondary" onclick="respondSession(${s.id}, 'reject')" style="width: auto;">
                     <i class="fas fa-times"></i> Decline
                   </button>
                 ` : ''}
+                ${s.status === 'accepted' ? `
+                  <button type="button" class="btn btn-primary" onclick="openLiveSession(${s.id})" style="width: auto;">
+                    <i class="fas fa-play"></i> Start session
+                  </button>
+                ` : ''}
                 ${s.status === 'ongoing' ? `
-                  <button class="btn btn-primary" onclick="openLiveSession(${s.id})" style="width: auto;">
-                    <i class="fas fa-video"></i> Join
+                  <button type="button" class="btn btn-primary" onclick="openLiveSession(${s.id})" style="width: auto;">
+                    <i class="fas fa-video"></i> Live room
                   </button>
                 ` : ''}
               </div>
@@ -2018,13 +2654,18 @@
 
     async function respondSession(id, action) {
       try {
-        await fetch(`${API}/sessions/${id}/${action}`, {
+        const res = await fetch(`${API}/sessions/${id}/${action}`, {
           method: 'PUT',
           headers: {'Authorization': `Bearer ${token}`}
         });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Request failed');
+        }
         loadSessions('upcoming');
+        loadDashboard();
       } catch (err) {
-        alert('Failed to respond');
+        alert(err.message || 'Failed to respond');
       }
     }
 
@@ -2330,17 +2971,37 @@
       openBookModal();
     }
 
-    function openBookModal() {
-      const select = document.getElementById('book-skill');
-      select.innerHTML = '<option value="">Select skill...</option>';
-      select.innerHTML += `
-        <option value="JavaScript">JavaScript</option>
-        <option value="Python">Python</option>
-        <option value="React">React</option>
-        <option value="Guitar">Guitar</option>
-        <option value="Piano">Piano</option>
-        <option value="Cooking">Cooking</option>
-      `;
+    async function openBookModal() {
+      const input = document.getElementById('book-skill');
+      const dl = document.getElementById('book-skill-suggestions');
+      const hint = document.getElementById('book-skill-hint');
+      input.value = '';
+      dl.innerHTML = '';
+      if (currentChatUser?.id) {
+        try {
+          const res = await fetch(`${API}/users/${currentChatUser.id}/public-profile`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const u = await res.json();
+            const names = (u.skills_have || []).map((s) => s.skill_name).filter(Boolean);
+            names.forEach((n) => {
+              const opt = document.createElement('option');
+              opt.value = n;
+              dl.appendChild(opt);
+            });
+            hint.textContent = names.length
+              ? `Suggestions from ${u.name}'s teaching skills — or type any skill.`
+              : `Type any skill you want to learn. ${u.name} has not listed teaching skills yet.`;
+          } else {
+            hint.textContent = 'Type the skill you want to learn.';
+          }
+        } catch (e) {
+          hint.textContent = 'Type the skill you want to learn.';
+        }
+      } else {
+        hint.textContent = 'Open a chat with a partner first, or type any skill for the request.';
+      }
       document.getElementById('book-modal').classList.add('active');
     }
 
@@ -2354,7 +3015,7 @@
         return;
       }
 
-      const skill = document.getElementById('book-skill').value;
+      const skill = document.getElementById('book-skill').value.trim();
       const date = document.getElementById('book-date').value;
       const time = document.getElementById('book-time').value;
       
@@ -2389,6 +3050,7 @@
         closeBookModal();
         alert('Session request sent!');
         loadSessions('upcoming');
+        loadDashboard();
       } catch (err) {
         alert(err.message || 'Failed to book session');
       }
@@ -2398,48 +3060,71 @@
     // LIVE SESSION
     // ============================================
     async function openLiveSession(sessionId) {
+      clearInterval(sessionTimerInterval);
       activeSessionId = sessionId;
+      document.getElementById('session-timer').textContent = '00:00:00';
+      document.getElementById('btn-start-session').style.display = 'none';
+      document.getElementById('btn-complete-session').style.display = 'none';
+      document.getElementById('btn-complete-session').disabled = true;
       document.getElementById('live-session-modal').classList.add('active');
-      updateLiveStatus();
+      await updateLiveStatus();
       sessionTimerInterval = setInterval(updateLiveStatus, 1000);
     }
 
     async function updateLiveStatus() {
       if (!activeSessionId) return;
-      
+
       try {
         const res = await fetch(`${API}/sessions/${activeSessionId}/status`, {
-          headers: {'Authorization': `Bearer ${token}`}
+          headers: { Authorization: `Bearer ${token}` }
         });
+        if (!res.ok) return;
         const status = await res.json();
-        
-        document.getElementById('session-timer').textContent = status.duration_formatted;
-        
+
+        document.getElementById('session-timer').textContent =
+          status.duration_formatted || '00:00:00';
+
+        const meet = document.getElementById('meet-link');
         if (status.meeting_link) {
-          document.getElementById('meet-link').href = status.meeting_link;
+          meet.href = status.meeting_link;
+          meet.style.display = 'inline-flex';
+        } else {
+          meet.style.display = 'none';
         }
-        
+
+        const label = document.getElementById('live-session-status-label');
+        const startBtn = document.getElementById('btn-start-session');
+        const compBtn = document.getElementById('btn-complete-session');
+
+        if (status.status === 'completed') {
+          label.innerHTML = `${sessionStatusPill('completed')} This session is finished.`;
+          startBtn.style.display = 'none';
+          compBtn.style.display = 'none';
+          return;
+        }
+
         if (status.status === 'accepted') {
-          document.getElementById('btn-start-session').style.display = 'inline-flex';
-          document.getElementById('btn-complete-session').style.display = 'none';
+          label.innerHTML = `${sessionStatusPill('ready')} Press <strong>Start session</strong> when you begin learning together.`;
+          startBtn.style.display = 'inline-flex';
+          compBtn.style.display = 'none';
         } else if (status.status === 'ongoing') {
-          document.getElementById('btn-start-session').style.display = 'none';
-          document.getElementById('btn-complete-session').style.display = 'inline-flex';
-          
-          const btn = document.getElementById('btn-complete-session');
+          label.innerHTML = `${sessionStatusPill('live')} Timer is running. Complete after 15 minutes to earn points.`;
+          startBtn.style.display = 'none';
+          compBtn.style.display = 'inline-flex';
           if (status.can_complete) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check"></i> Complete Session';
+            compBtn.disabled = false;
+            compBtn.innerHTML = '<i class="fas fa-check"></i> Complete session';
           } else {
-            btn.disabled = true;
-            btn.innerHTML = `<i class="fas fa-clock"></i> Wait ${Math.ceil(status.time_remaining / 60)} min`;
+            compBtn.disabled = true;
+            const tr = status.time_remaining_seconds ?? 0;
+            const m = Math.max(1, Math.ceil(tr / 60));
+            compBtn.innerHTML = `<i class="fas fa-clock"></i> ${m} min left`;
           }
+        } else {
+          label.innerHTML = `${sessionStatusPill('pending')} Waiting on scheduling or acceptance.`;
+          startBtn.style.display = 'none';
+          compBtn.style.display = 'none';
         }
-        
-        document.getElementById('my-confirm-status').textContent = status.my_confirmation ? '✅ Confirmed' : '⏳ Pending';
-        document.getElementById('my-confirm-status').style.color = status.my_confirmation ? 'var(--success)' : 'var(--warning)';
-        document.getElementById('partner-confirm-status').textContent = status.partner_confirmation ? '✅ Confirmed' : '⏳ Pending';
-        document.getElementById('partner-confirm-status').style.color = status.partner_confirmation ? 'var(--success)' : 'var(--warning)';
       } catch (err) {
         console.error('Failed to update status:', err);
       }
@@ -2447,11 +3132,17 @@
 
     async function startSession() {
       try {
-        await fetch(`${API}/sessions/${activeSessionId}/start`, {
+        const res = await fetch(`${API}/sessions/${activeSessionId}/start`, {
           method: 'POST',
-          headers: {'Authorization': `Bearer ${token}`}
+          headers: { Authorization: `Bearer ${token}` }
         });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          alert(data.error || 'Failed to start session');
+          return;
+        }
         updateLiveStatus();
+        loadDashboard();
       } catch (err) {
         alert('Failed to start session');
       }
@@ -2461,21 +3152,18 @@
       try {
         const res = await fetch(`${API}/sessions/${activeSessionId}/complete`, {
           method: 'POST',
-          headers: {'Authorization': `Bearer ${token}`}
+          headers: { Authorization: `Bearer ${token}` }
         });
-        const data = await res.json();
-        
-        if (data.error) {
-          alert(data.message);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          alert(data.error || 'Could not complete session');
           return;
         }
-        
-        if (data.validated) {
-          closeLiveSession();
-          loadSessions('upcoming');
-        } else {
-          alert('Waiting for partner confirmation...');
-        }
+        alert(`Session complete! +${data.points_earned || 150} points!`);
+        closeLiveSession();
+        loadSessions('upcoming');
+        loadDashboard();
+        refreshCurrentUser();
       } catch (err) {
         alert('Failed to complete session');
       }
@@ -2483,8 +3171,41 @@
 
     function closeLiveSession() {
       clearInterval(sessionTimerInterval);
+      sessionTimerInterval = null;
       activeSessionId = null;
       document.getElementById('live-session-modal').classList.remove('active');
+    }
+
+    function focusMessageInput() {
+      document.getElementById('message-input')?.focus();
+    }
+
+    async function openChatMeetingLink() {
+      if (!currentChatUser) {
+        alert('Open a conversation first.');
+        return;
+      }
+      try {
+        const res = await fetch(`${API}/sessions`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const sessions = await res.json();
+        const pid = currentChatUser.id;
+        const s = sessions.find(
+          (x) =>
+            (x.requester_id === pid || x.partner_id === pid) &&
+            ['accepted', 'ongoing'].includes(x.status) &&
+            x.meeting_link
+        );
+        if (s?.meeting_link) {
+          window.open(s.meeting_link, '_blank', 'noopener,noreferrer');
+        } else {
+          alert('No meeting link yet. Book or accept a session first — the link appears after acceptance.');
+        }
+      } catch (e) {
+        alert('Could not load sessions.');
+      }
     }
 
     // ============================================

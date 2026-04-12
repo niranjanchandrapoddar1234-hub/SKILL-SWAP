@@ -17,7 +17,18 @@ const io = new Server(server, {
 });
 
 app.use(cors({ origin: '*', credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
+
+async function ensureSchema() {
+  try {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image TEXT"
+    );
+  } catch (e) {
+    console.warn("Schema check (profile_image):", e.message);
+  }
+}
+ensureSchema();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://postgres:RNTC143@localhost:5432/skillswap',
@@ -182,6 +193,119 @@ app.get("/profile", authenticateToken, async (req, res) => {
   }
 });
 
+app.get("/users/:id/public-profile", authenticateToken, async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id, 10);
+    if (uid === req.user.userId) {
+      return res.status(400).json({ error: "Use /profile for your own account" });
+    }
+    const userResult = await pool.query(
+      "SELECT id, name, bio, location, is_online FROM users WHERE id = $1",
+      [uid]
+    );
+    if (userResult.rows.length === 0) return res.status(404).json({ error: "User not found" });
+    const skillsResult = await pool.query(
+      "SELECT skill_name, skill_type, proficiency FROM skills WHERE user_id = $1",
+      [uid]
+    );
+    res.json({
+      ...userResult.rows[0],
+      skills_have: skillsResult.rows.filter((s) => s.skill_type === "have"),
+      skills_want: skillsResult.rows.filter((s) => s.skill_type === "want")
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
+app.put("/profile", authenticateToken, async (req, res) => {
+  const { name, bio, location, profile_image, password, skills_have, skills_want } = req.body;
+
+  try {
+    if (password && String(password).length >= 6) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
+        hashedPassword,
+        req.user.userId
+      ]);
+    } else if (password && String(password).length > 0) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const updates = [];
+    const vals = [];
+    let i = 1;
+    if (name != null && String(name).trim()) {
+      updates.push(`name = $${i++}`);
+      vals.push(String(name).trim());
+    }
+    if (bio != null) {
+      updates.push(`bio = $${i++}`);
+      vals.push(String(bio));
+    }
+    if (location != null) {
+      updates.push(`location = $${i++}`);
+      vals.push(String(location));
+    }
+    if (profile_image !== undefined) {
+      updates.push(`profile_image = $${i++}`);
+      vals.push(profile_image ? String(profile_image) : null);
+    }
+    if (updates.length) {
+      vals.push(req.user.userId);
+      await pool.query(
+        `UPDATE users SET ${updates.join(", ")} WHERE id = $${i}`,
+        vals
+      );
+    }
+
+    if (Array.isArray(skills_have) && Array.isArray(skills_want)) {
+      await pool.query("DELETE FROM skills WHERE user_id = $1", [req.user.userId]);
+      for (const skill of skills_have) {
+        if (!skill?.name || !String(skill.name).trim()) continue;
+        await pool.query(
+          `INSERT INTO skills (user_id, skill_name, skill_type, proficiency, category) 
+           VALUES ($1, $2, 'have', $3, $4)`,
+          [
+            req.user.userId,
+            String(skill.name).trim(),
+            skill.proficiency || "Intermediate",
+            skill.category || "Other"
+          ]
+        );
+      }
+      for (const skill of skills_want) {
+        if (!skill?.name || !String(skill.name).trim()) continue;
+        await pool.query(
+          `INSERT INTO skills (user_id, skill_name, skill_type, proficiency, category) 
+           VALUES ($1, $2, 'want', 'Beginner', $3)`,
+          [req.user.userId, String(skill.name).trim(), skill.category || "Other"]
+        );
+      }
+    }
+
+    const userResult = await pool.query(
+      `SELECT u.*, us.* FROM users u 
+       LEFT JOIN user_stats us ON u.id = us.user_id 
+       WHERE u.id = $1`,
+      [req.user.userId]
+    );
+    const user = userResult.rows[0];
+    const skillsResult = await pool.query("SELECT * FROM skills WHERE user_id = $1", [
+      req.user.userId
+    ]);
+
+    res.json({
+      ...user,
+      skills_have: skillsResult.rows.filter((s) => s.skill_type === "have"),
+      skills_want: skillsResult.rows.filter((s) => s.skill_type === "want")
+    });
+  } catch (err) {
+    console.error("Profile update error:", err);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
 // ============================================
 // MATCHES
 // ============================================
@@ -193,7 +317,7 @@ app.get("/smart-matches", authenticateToken, async (req, res) => {
     const myWant = mySkills.rows.filter(s => s.skill_type === 'want').map(s => s.skill_name.toLowerCase());
     
     const usersResult = await pool.query(
-      `SELECT DISTINCT u.id, u.name, u.bio, u.location, u.points, u.level, u.is_online,
+      `SELECT DISTINCT u.id, u.name, u.bio, u.location, u.points, u.level, u.is_online, u.profile_image,
        COALESCE(us.average_rating_received, 0) as avg_rating,
        array_agg(DISTINCT CASE WHEN s.skill_type = 'have' THEN s.skill_name END) FILTER (WHERE s.skill_type = 'have') as skills_have,
        array_agg(DISTINCT CASE WHEN s.skill_type = 'want' THEN s.skill_name END) FILTER (WHERE s.skill_type = 'want') as skills_want
@@ -313,11 +437,27 @@ app.put("/sessions/:id/reject", authenticateToken, async (req, res) => {
 
 app.post("/sessions/:id/start", authenticateToken, async (req, res) => {
   try {
+    const found = await pool.query(
+      `SELECT * FROM sessions WHERE id = $1 AND (requester_id = $2 OR partner_id = $2)`,
+      [req.params.id, req.user.userId]
+    );
+    if (found.rows.length === 0) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+    const sess = found.rows[0];
+    if (sess.status !== "accepted") {
+      return res
+        .status(400)
+        .json({ error: "Session must be accepted before starting" });
+    }
     const startTime = new Date();
     await pool.query(
       "UPDATE sessions SET status = 'ongoing', actual_start_time = $1 WHERE id = $2",
       [startTime, req.params.id]
     );
+    const sid = parseInt(req.params.id, 10);
+    io.to(`user_${sess.requester_id}`).emit("session_started", { session_id: sid });
+    io.to(`user_${sess.partner_id}`).emit("session_started", { session_id: sid });
     res.json({ success: true, start_time: startTime });
   } catch (err) {
     res.status(500).json({ error: "Failed to start" });
@@ -326,19 +466,32 @@ app.post("/sessions/:id/start", authenticateToken, async (req, res) => {
 
 app.get("/sessions/:id/status", authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM sessions WHERE id = $1", [req.params.id]);
-    const sess = result.rows[0];
-    
-    let durationSeconds = 0;
-    if (sess.actual_start_time && sess.status === 'ongoing') {
-      durationSeconds = Math.floor((new Date() - new Date(sess.actual_start_time)) / 1000);
+    const result = await pool.query(
+      `SELECT * FROM sessions WHERE id = $1 AND (requester_id = $2 OR partner_id = $2)`,
+      [req.params.id, req.user.userId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Session not found" });
     }
-    
+    const sess = result.rows[0];
+
+    let durationSeconds = 0;
+    if (sess.actual_start_time && sess.status === "ongoing") {
+      durationSeconds = Math.floor(
+        (Date.now() - new Date(sess.actual_start_time).getTime()) / 1000
+      );
+    }
+
+    const timeRemaining = Math.max(0, MIN_SESSION_DURATION - durationSeconds);
+
     res.json({
       ...sess,
       duration_seconds: durationSeconds,
       duration_formatted: formatDuration(durationSeconds),
-      can_complete: sess.status === 'ongoing' && durationSeconds >= MIN_SESSION_DURATION
+      time_remaining_seconds: timeRemaining,
+      time_remaining_formatted: formatDuration(timeRemaining),
+      can_complete:
+        sess.status === "ongoing" && durationSeconds >= MIN_SESSION_DURATION
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to get status" });
@@ -347,19 +500,49 @@ app.get("/sessions/:id/status", authenticateToken, async (req, res) => {
 
 app.post("/sessions/:id/complete", authenticateToken, async (req, res) => {
   try {
-    const session = await pool.query("SELECT * FROM sessions WHERE id = $1", [req.params.id]);
+    const session = await pool.query(
+      `SELECT * FROM sessions WHERE id = $1 AND (requester_id = $2 OR partner_id = $2)`,
+      [req.params.id, req.user.userId]
+    );
+    if (session.rows.length === 0) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
     const sess = session.rows[0];
-    
-    const durationSeconds = Math.floor((new Date() - new Date(sess.actual_start_time)) / 1000);
-    
+    if (sess.status !== "ongoing") {
+      return res.status(400).json({ error: "Session is not live" });
+    }
+    if (!sess.actual_start_time) {
+      return res.status(400).json({ error: "Session has not been started" });
+    }
+
+    const durationSeconds = Math.floor(
+      (Date.now() - new Date(sess.actual_start_time).getTime()) / 1000
+    );
+
     if (durationSeconds < MIN_SESSION_DURATION) {
       return res.status(400).json({ error: "Session too short" });
     }
-    
-    await pool.query("UPDATE sessions SET status = 'completed', is_valid = TRUE WHERE id = $1", [req.params.id]);
-    await pool.query("UPDATE users SET points = points + 150 WHERE id IN ($1, $2)", [sess.requester_id, sess.partner_id]);
-    
-    res.json({ success: true, points_earned: 150 });
+
+    await pool.query(
+      "UPDATE sessions SET status = 'completed', is_valid = TRUE WHERE id = $1",
+      [req.params.id]
+    );
+    await pool.query("UPDATE users SET points = points + 150 WHERE id IN ($1, $2)", [
+      sess.requester_id,
+      sess.partner_id
+    ]);
+
+    const sid = parseInt(req.params.id, 10);
+    io.to(`user_${sess.requester_id}`).emit("session_completed", {
+      session_id: sid,
+      points: 150
+    });
+    io.to(`user_${sess.partner_id}`).emit("session_completed", {
+      session_id: sid,
+      points: 150
+    });
+
+    res.json({ success: true, points_earned: 150, validated: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to complete" });
   }
@@ -496,4 +679,11 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+ensureSchema()
+  .then(() => {
+    server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+  })
+  .catch((e) => {
+    console.error("Startup:", e);
+    server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+  });
