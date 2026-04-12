@@ -8,31 +8,34 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
+
+// CORS setup for Socket.IO
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
 });
 
+// Middleware
 app.use(cors({
   origin: '*',
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
-// PRODUCTION DATABASE CONFIGURATION
+// Database
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://postgres:RNTC143@localhost:5432/skillswap',
-  ssl: process.env.DATABASE_URL ? {
-    rejectUnauthorized: false
-  } : false
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-const MIN_SESSION_DURATION = 900; // 15 minutes
+const MIN_SESSION_DURATION = 900;
 
-// Middleware
+// Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -45,7 +48,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Format duration helper
+// Format duration
 function formatDuration(seconds) {
   if (!seconds || seconds < 0) return "00:00:00";
   const hrs = Math.floor(seconds / 3600);
@@ -54,9 +57,15 @@ function formatDuration(seconds) {
   return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
+// Format time for messages
+function formatMessageTime(date) {
+  const d = new Date(date);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 // Routes
 app.get("/", (req, res) => {
-  res.send("🚀 Skill Swap API Running");
+  res.send("🚀 SkillSwap API Running");
 });
 
 // REGISTER
@@ -126,7 +135,7 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid password" });
     }
     
-    await pool.query("UPDATE users SET is_online = TRUE WHERE id = $1", [user.id]);
+    await pool.query("UPDATE users SET is_online = TRUE, last_seen = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
     
     const token = jwt.sign(
       { userId: user.id, email: user.email, name: user.name },
@@ -144,6 +153,7 @@ app.post("/login", async (req, res) => {
         email: user.email,
         bio: user.bio,
         location: user.location,
+        avatar_url: user.avatar_url,
         points: user.points,
         level: user.level,
         badges: user.badges,
@@ -154,6 +164,7 @@ app.post("/login", async (req, res) => {
       }
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Login failed" });
   }
 });
@@ -230,7 +241,7 @@ app.get("/smart-matches", authenticateToken, async (req, res) => {
     const myWant = mySkills.rows.filter(s => s.skill_type === 'want').map(s => s.skill_name.toLowerCase());
     
     const usersResult = await pool.query(
-      `SELECT DISTINCT u.id, u.name, u.bio, u.location, u.points, u.level, u.is_online,
+      `SELECT DISTINCT u.id, u.name, u.bio, u.location, u.points, u.level, u.is_online, u.avatar_url,
        COALESCE(us.average_rating_received, 0) as avg_rating,
        array_agg(DISTINCT CASE WHEN s.skill_type = 'have' THEN s.skill_name END) FILTER (WHERE s.skill_type = 'have') as skills_have,
        array_agg(DISTINCT CASE WHEN s.skill_type = 'want' THEN s.skill_name END) FILTER (WHERE s.skill_type = 'want') as skills_want
@@ -267,11 +278,12 @@ app.get("/smart-matches", authenticateToken, async (req, res) => {
     
     res.json(matches);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Matching failed" });
   }
 });
 
-// AI SUGGESTIONS
+// SKILL SUGGESTIONS
 app.get("/skill-suggestions/:input", async (req, res) => {
   try {
     const result = await pool.query(
@@ -285,7 +297,7 @@ app.get("/skill-suggestions/:input", async (req, res) => {
   }
 });
 
-// CREATE SESSION
+// SESSIONS ROUTES
 app.post("/sessions", authenticateToken, async (req, res) => {
   const { partner_id, skill_taught, session_date, session_time, duration, notes, meeting_link } = req.body;
   
@@ -309,7 +321,6 @@ app.post("/sessions", authenticateToken, async (req, res) => {
   }
 });
 
-// GET SESSIONS
 app.get("/sessions", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -327,7 +338,6 @@ app.get("/sessions", authenticateToken, async (req, res) => {
   }
 });
 
-// ACCEPT SESSION
 app.put("/sessions/:id/accept", authenticateToken, async (req, res) => {
   try {
     const session = await pool.query(
@@ -358,7 +368,6 @@ app.put("/sessions/:id/accept", authenticateToken, async (req, res) => {
   }
 });
 
-// REJECT SESSION (ADDED)
 app.put("/sessions/:id/reject", authenticateToken, async (req, res) => {
   try {
     const session = await pool.query(
@@ -384,7 +393,6 @@ app.put("/sessions/:id/reject", authenticateToken, async (req, res) => {
   }
 });
 
-// START SESSION (TIMER BEGINS)
 app.post("/sessions/:id/start", authenticateToken, async (req, res) => {
   try {
     const session = await pool.query(
@@ -407,7 +415,6 @@ app.post("/sessions/:id/start", authenticateToken, async (req, res) => {
   }
 });
 
-// GET SESSION STATUS
 app.get("/sessions/:id/status", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -451,7 +458,6 @@ app.get("/sessions/:id/status", authenticateToken, async (req, res) => {
   }
 });
 
-// COMPLETE SESSION (ANTI-CHEAT)
 app.post("/sessions/:id/complete", authenticateToken, async (req, res) => {
   try {
     const session = await pool.query(
@@ -470,7 +476,6 @@ app.post("/sessions/:id/complete", authenticateToken, async (req, res) => {
     const start = new Date(sess.actual_start_time);
     const durationSeconds = Math.floor((now - start) / 1000);
     
-    // ANTI-CHEAT: Minimum 15 minutes
     if (durationSeconds < MIN_SESSION_DURATION) {
       await pool.query(`UPDATE sessions SET status = 'invalid' WHERE id = $1`, [req.params.id]);
       return res.status(400).json({ 
@@ -479,17 +484,14 @@ app.post("/sessions/:id/complete", authenticateToken, async (req, res) => {
       });
     }
     
-    // Update confirmation
     await pool.query(
       `UPDATE sessions SET ${confirmationField} = TRUE, actual_end_time = $1, actual_duration_seconds = $2 WHERE id = $3`,
       [now, durationSeconds, req.params.id]
     );
     
-    // Check if both confirmed
     const updated = await pool.query("SELECT requester_confirmed, partner_confirmed FROM sessions WHERE id = $1", [req.params.id]);
     
     if (updated.rows[0].requester_confirmed && updated.rows[0].partner_confirmed) {
-      // Valid completion
       await pool.query("UPDATE sessions SET status = 'completed', is_valid = TRUE WHERE id = $1", [req.params.id]);
       await pool.query("UPDATE users SET points = points + 150 WHERE id IN ($1, $2)", [sess.requester_id, sess.partner_id]);
       await pool.query(
@@ -553,13 +555,9 @@ app.get("/notifications", authenticateToken, async (req, res) => {
   }
 });
 
-// MARK NOTIFICATION AS READ (ADDED)
 app.put("/notifications/:id/read", authenticateToken, async (req, res) => {
   try {
-    await pool.query(
-      "UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2",
-      [req.params.id, req.user.userId]
-    );
+    await pool.query("UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2", [req.params.id, req.user.userId]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to mark as read" });
@@ -567,15 +565,21 @@ app.put("/notifications/:id/read", authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// MESSAGES - FULL FEATURED WITH DELETE
+// MESSAGES - WHATSAPP STYLE API
 // ============================================
 
-// GET MESSAGES BETWEEN USERS
+// Get messages with user info
 app.get("/messages/:userId", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT m.*, u.name as sender_name FROM messages m
-       JOIN users u ON m.sender_id = u.id
+      `SELECT m.*, 
+        u1.name as sender_name, 
+        u1.avatar_url as sender_avatar,
+        u2.name as receiver_name,
+        u2.avatar_url as receiver_avatar
+       FROM messages m
+       JOIN users u1 ON m.sender_id = u1.id
+       JOIN users u2 ON m.receiver_id = u2.id
        WHERE ((m.sender_id = $1 AND m.receiver_id = $2) OR (m.sender_id = $2 AND m.receiver_id = $1))
        AND m.is_deleted = FALSE
        ORDER BY m.created_at ASC`,
@@ -584,9 +588,15 @@ app.get("/messages/:userId", authenticateToken, async (req, res) => {
     
     // Mark messages as read
     await pool.query(
-      "UPDATE messages SET is_read = TRUE WHERE sender_id = $1 AND receiver_id = $2 AND is_read = FALSE",
+      "UPDATE messages SET is_read = TRUE, read_at = CURRENT_TIMESTAMP WHERE sender_id = $1 AND receiver_id = $2 AND is_read = FALSE",
       [req.params.userId, req.user.userId]
     );
+    
+    // Notify sender that messages were read
+    io.to(`user_${req.params.userId}`).emit("messages_read", { 
+      reader_id: req.user.userId,
+      reader_name: req.user.name 
+    });
     
     res.json(result.rows);
   } catch (err) {
@@ -595,39 +605,38 @@ app.get("/messages/:userId", authenticateToken, async (req, res) => {
   }
 });
 
-// SEND MESSAGE
+// Send message
 app.post("/messages", authenticateToken, async (req, res) => {
-  const { receiver_id, message } = req.body;
+  const { receiver_id, message, message_type = 'text', reply_to } = req.body;
   
   try {
-    // Verify receiver exists
-    const receiver = await pool.query("SELECT id FROM users WHERE id = $1", [receiver_id]);
+    const receiver = await pool.query("SELECT id, name FROM users WHERE id = $1", [receiver_id]);
     if (receiver.rows.length === 0) {
       return res.status(404).json({ error: "Receiver not found" });
     }
     
-    // Insert message
     const result = await pool.query(
-      `INSERT INTO messages (sender_id, receiver_id, message) 
-       VALUES ($1, $2, $3) RETURNING *`,
-      [req.user.userId, receiver_id, message]
+      `INSERT INTO messages (sender_id, receiver_id, message, message_type, reply_to) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.user.userId, receiver_id, message, message_type, reply_to || null]
     );
     
-    // Add sender name to response
     const messageWithSender = {
       ...result.rows[0],
-      sender_name: req.user.name
+      sender_name: req.user.name,
+      sender_avatar: req.user.avatar_url || ''
     };
     
     // Create notification
     await pool.query(
       `INSERT INTO notifications (user_id, type, title, message, related_id) 
        VALUES ($1, 'message', 'New Message', $2, $3)`,
-      [receiver_id, `New message from ${req.user.name}`, result.rows[0].id]
+      [receiver_id, `${req.user.name}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`, result.rows[0].id]
     );
     
-    // Emit real-time event to receiver
+    // Real-time emit
     io.to(`user_${receiver_id}`).emit("new_message", messageWithSender);
+    io.to(`user_${receiver_id}`).emit("notification", { type: "new_message", sender_name: req.user.name });
     
     res.json(messageWithSender);
   } catch (err) {
@@ -636,10 +645,9 @@ app.post("/messages", authenticateToken, async (req, res) => {
   }
 });
 
-// DELETE MESSAGE (NEW ENDPOINT)
+// Delete message
 app.delete("/messages/:id", authenticateToken, async (req, res) => {
   try {
-    // Verify the message belongs to the current user (sender only can delete)
     const check = await pool.query(
       "SELECT * FROM messages WHERE id = $1 AND sender_id = $2",
       [req.params.id, req.user.userId]
@@ -651,72 +659,37 @@ app.delete("/messages/:id", authenticateToken, async (req, res) => {
     
     const message = check.rows[0];
     
-    // Hard delete from database
-    await pool.query("DELETE FROM messages WHERE id = $1", [req.params.id]);
+    // Soft delete
+    await pool.query(
+      "UPDATE messages SET is_deleted = TRUE, deleted_at = CURRENT_TIMESTAMP WHERE id = $1",
+      [req.params.id]
+    );
     
-    // Notify receiver about deletion via socket
     io.to(`user_${message.receiver_id}`).emit("message_deleted", { 
       message_id: req.params.id,
       sender_id: req.user.userId
     });
     
-    res.json({ success: true, message: "Message deleted" });
+    res.json({ success: true });
   } catch (err) {
     console.error("Delete message error:", err);
     res.status(500).json({ error: "Failed to delete message" });
   }
 });
 
-// EDIT MESSAGE (NEW ENDPOINT - BONUS)
-app.put("/messages/:id", authenticateToken, async (req, res) => {
-  const { message } = req.body;
-  
-  try {
-    // Verify ownership
-    const check = await pool.query(
-      "SELECT * FROM messages WHERE id = $1 AND sender_id = $2",
-      [req.params.id, req.user.userId]
-    );
-    
-    if (check.rows.length === 0) {
-      return res.status(403).json({ error: "Can only edit your own messages" });
-    }
-    
-    const oldMessage = check.rows[0];
-    
-    // Update message
-    const result = await pool.query(
-      "UPDATE messages SET message = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *",
-      [message, req.params.id]
-    );
-    
-    // Notify receiver about edit
-    io.to(`user_${oldMessage.receiver_id}`).emit("message_edited", {
-      message_id: req.params.id,
-      new_message: message,
-      sender_id: req.user.userId
-    });
-    
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("Edit message error:", err);
-    res.status(500).json({ error: "Failed to edit message" });
-  }
-});
-
-// GET CHAT LIST
+// Get chat list with last message preview
 app.get("/chat-list", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT DISTINCT u.id, u.name, u.is_online,
-        (SELECT message FROM messages 
-         WHERE ((sender_id = u.id AND receiver_id = $1) OR (sender_id = $1 AND receiver_id = u.id)) 
-         AND is_deleted = FALSE
-         ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT created_at FROM messages 
-         WHERE ((sender_id = u.id AND receiver_id = $1) OR (sender_id = $1 AND receiver_id = u.id))
-         AND is_deleted = FALSE
-         ORDER BY created_at DESC LIMIT 1) as last_message_time,
+      `SELECT DISTINCT u.id, u.name, u.is_online, u.avatar_url, u.last_seen,
+        (SELECT m.message FROM messages m
+         WHERE ((m.sender_id = u.id AND m.receiver_id = $1) OR (m.sender_id = $1 AND m.receiver_id = u.id))
+         AND m.is_deleted = FALSE
+         ORDER BY m.created_at DESC LIMIT 1) as last_message,
+        (SELECT m.created_at FROM messages m
+         WHERE ((m.sender_id = u.id AND m.receiver_id = $1) OR (m.sender_id = $1 AND m.receiver_id = u.id))
+         AND m.is_deleted = FALSE
+         ORDER BY m.created_at DESC LIMIT 1) as last_message_time,
         (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = $1 AND is_read = FALSE AND is_deleted = FALSE) as unread_count
        FROM users u 
        JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = $1) OR (m.sender_id = $1 AND m.receiver_id = u.id)
@@ -732,28 +705,28 @@ app.get("/chat-list", authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// SOCKET.IO - FULL EVENT HANDLING
+// SOCKET.IO - REAL-TIME EVENTS
 // ============================================
 
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
+  console.log("🔌 Client connected:", socket.id);
   
-  // Join user-specific room
-  socket.on("join", (userId) => {
+  socket.on("join", async (userId) => {
     socket.join(`user_${userId}`);
-    console.log(`User ${userId} joined their room`);
+    console.log(`👤 User ${userId} joined`);
     
     // Update online status
-    pool.query("UPDATE users SET is_online = TRUE WHERE id = $1", [userId]);
+    await pool.query("UPDATE users SET is_online = TRUE WHERE id = $1", [userId]);
     
-    // Broadcast to friends/contacts that user is online
-    socket.broadcast.emit("user_online", { user_id: userId });
+    // Broadcast to all that user is online
+    socket.broadcast.emit("user_status", { user_id: userId, is_online: true });
   });
   
-  // Handle typing indicators
+  // Typing indicators
   socket.on("typing", (data) => {
     io.to(`user_${data.receiver_id}`).emit("typing", {
       sender_id: data.sender_id,
+      sender_name: data.sender_name,
       is_typing: true
     });
   });
@@ -765,35 +738,29 @@ io.on("connection", (socket) => {
     });
   });
   
-  // Handle message read receipts
-  socket.on("mark_read", (data) => {
-    io.to(`user_${data.sender_id}`).emit("message_read", {
-      message_ids: data.message_ids,
-      reader_id: data.reader_id
+  // Message read receipts
+  socket.on("mark_read", async (data) => {
+    await pool.query(
+      "UPDATE messages SET is_read = TRUE, read_at = CURRENT_TIMESTAMP WHERE sender_id = $1 AND receiver_id = $2 AND is_read = FALSE",
+      [data.sender_id, data.reader_id]
+    );
+    
+    io.to(`user_${data.sender_id}`).emit("messages_read", {
+      reader_id: data.reader_id,
+      reader_name: data.reader_name
     });
   });
   
-  // Handle message deletion relay (for cross-device sync)
-  socket.on("message_deleted", (data) => {
-    // Relay to receiver if they're online
-    io.to(`user_${data.receiver_id}`).emit("message_deleted", {
-      message_id: data.message_id,
-      sender_id: data.sender_id
-    });
-  });
-  
-  // Handle disconnect
-  socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
+  // Disconnect handling
+  socket.on("disconnect", async () => {
+    console.log("❌ Client disconnected:", socket.id);
   });
 });
 
 // ============================================
 // SERVER START
 // ============================================
-
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 SkillSwap Server running on port ${PORT}`);
-  console.log(`📡 Socket.IO ready for real-time connections`);
 });
