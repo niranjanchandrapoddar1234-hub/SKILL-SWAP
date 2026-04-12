@@ -523,6 +523,7 @@
       display: grid;
       grid-template-columns: 360px 1fr;
       height: 100%;
+      min-height: 0;
     }
     
     /* Chat Sidebar */
@@ -531,6 +532,7 @@
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
+      min-height: 0;
     }
     
     .chat-sidebar-header {
@@ -563,6 +565,7 @@
     
     .chat-list {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
     }
     
@@ -675,8 +678,22 @@
     .chat-main {
       display: flex;
       flex-direction: column;
+      min-height: 0;
+      flex: 1;
       background: var(--chat-bg);
       background-image: var(--chat-bg-pattern);
+    }
+
+    .active-chat-panel {
+      flex: 1;
+      min-height: 0;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .active-chat-panel.visible {
+      display: flex;
     }
     
     .chat-header {
@@ -686,12 +703,34 @@
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 0.5rem;
+    }
+
+    .chat-back-mobile {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .chat-back-mobile:hover {
+      background: rgba(0, 0, 0, 0.06);
     }
     
     .chat-header-info {
       display: flex;
       align-items: center;
       gap: 0.875rem;
+      flex: 1;
+      min-width: 0;
     }
     
     .chat-header-avatar {
@@ -755,7 +794,9 @@
     /* Messages Area */
     .messages-container {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 1.5rem;
       display: flex;
       flex-direction: column;
@@ -766,10 +807,54 @@
       display: flex;
       width: 100%;
       margin-bottom: 0.5rem;
+      position: relative;
+      align-items: flex-end;
+      gap: 0.35rem;
+    }
+
+    .message-delete {
+      flex-shrink: 0;
+      align-self: center;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.06);
+      color: var(--text-light);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      opacity: 0;
+      transition: opacity 0.15s, background 0.15s, color 0.15s;
+    }
+
+    .message-wrapper.sent:hover .message-delete {
+      opacity: 1;
+    }
+
+    .message-delete:hover {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+    }
+
+    @media (max-width: 968px) {
+      .message-delete {
+        opacity: 1;
+      }
     }
     
     .message-wrapper.sent {
       justify-content: flex-end;
+    }
+
+    .message-wrapper.sent .message {
+      order: 2;
+    }
+
+    .message-wrapper.sent .message-delete {
+      order: 1;
     }
     
     .message-wrapper.received {
@@ -847,6 +932,7 @@
       padding: 0.75rem 1rem;
       color: var(--text-light);
       font-size: 0.85rem;
+      flex-shrink: 0;
     }
     
     .typing-indicator.active {
@@ -881,6 +967,7 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
+      flex-shrink: 0;
     }
     
     .chat-input-wrapper {
@@ -1136,19 +1223,25 @@
       .chat-container {
         grid-template-columns: 1fr;
       }
-      
-      .chat-sidebar {
+
+      .chat-back-mobile {
+        display: flex;
+      }
+
+      .chat-container:not(.chat-thread-open) .chat-main {
         display: none;
       }
-      
-      .chat-sidebar.mobile-open {
+
+      .chat-container.chat-thread-open .chat-sidebar {
+        display: none;
+      }
+
+      .chat-sidebar {
         display: flex;
-        position: fixed;
-        top: 60px;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 100;
+        flex-direction: column;
+        min-height: 0;
+        height: 100%;
+        border-right: none;
       }
       
       .dashboard-layout {
@@ -1339,7 +1432,7 @@
 
     <!-- CHAT PAGE - WHATSAPP STYLE -->
     <div id="page-chat" class="page chat-page">
-      <div class="chat-container">
+      <div class="chat-container" id="chat-container">
         
         <!-- Chat Sidebar -->
         <div class="chat-sidebar" id="chat-sidebar">
@@ -1368,10 +1461,13 @@
           </div>
 
           <!-- Active Chat -->
-          <div id="active-chat" style="display: none; flex-direction: column; height: 100%;">
+          <div id="active-chat" class="active-chat-panel">
             
             <!-- Chat Header -->
             <div class="chat-header">
+              <button type="button" class="chat-back-mobile" onclick="closeMobileChatThread()" aria-label="Back to conversations">
+                <i class="fas fa-arrow-left"></i>
+              </button>
               <div class="chat-header-info">
                 <div class="chat-header-avatar" id="chat-header-avatar">U</div>
                 <div class="chat-header-details">
@@ -1413,7 +1509,7 @@
                 <i class="far fa-smile"></i>
               </button>
               <div class="chat-input-wrapper">
-                <input type="text" id="message-input" placeholder="Type a message" onkeypress="handleKeyPress(event)">
+                <input type="text" id="message-input" placeholder="Type a message" onkeydown="handleMessageKeydown(event)">
                 <button class="input-action">
                   <i class="fas fa-paperclip"></i>
                 </button>
@@ -1555,6 +1651,28 @@
       // Set min date for booking
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('book-date').min = today;
+
+      const chatSearch = document.getElementById('chat-search-input');
+      if (chatSearch) {
+        chatSearch.addEventListener('input', () => {
+          const q = chatSearch.value.trim().toLowerCase();
+          document.querySelectorAll('#chat-list .chat-item').forEach((item) => {
+            const nameEl = item.querySelector('.chat-name');
+            const name = (nameEl?.textContent || '').toLowerCase();
+            item.style.display = !q || name.includes(q) ? '' : 'none';
+          });
+        });
+      }
+
+      const messagesContainer = document.getElementById('messages-container');
+      if (messagesContainer) {
+        messagesContainer.addEventListener('click', (e) => {
+          const del = e.target.closest('.message-delete');
+          if (del && del.dataset.messageId) {
+            deleteMessage(Number(del.dataset.messageId));
+          }
+        });
+      }
     });
 
     // ============================================
@@ -1572,7 +1690,10 @@
         if (page === 'dashboard') loadDashboard();
         if (page === 'discover') loadMatches();
         if (page === 'sessions') loadSessions('upcoming');
-        if (page === 'chat') loadChatList();
+        if (page === 'chat') {
+          document.getElementById('chat-container')?.classList.remove('chat-thread-open');
+          loadChatList();
+        }
       } else {
         document.getElementById('navbar').style.display = 'none';
       }
@@ -1680,6 +1801,18 @@
           displayMessage(data, false);
           scrollToBottom();
           playNotificationSound();
+        }
+        loadChatList();
+      });
+
+      socket.on('message_deleted', (data) => {
+        const peerOk =
+          currentChatUser &&
+          (Number(data.sender_id) === Number(currentChatUser.id) ||
+            Number(data.receiver_id) === Number(currentChatUser.id));
+        if (peerOk) {
+          const row = document.querySelector(`[data-message-id="${String(data.id)}"]`);
+          if (row) row.closest('.message-wrapper')?.remove();
         }
         loadChatList();
       });
@@ -1941,15 +2074,33 @@
       }
     }
 
+    function openMobileChatThread() {
+      if (window.matchMedia('(max-width: 968px)').matches) {
+        document.getElementById('chat-container')?.classList.add('chat-thread-open');
+      }
+    }
+
+    function closeMobileChatThread() {
+      document.getElementById('chat-container')?.classList.remove('chat-thread-open');
+      document.getElementById('empty-chat').style.display = 'flex';
+      document.getElementById('active-chat')?.classList.remove('visible');
+      currentChatUser = null;
+      document.querySelectorAll('.chat-item').forEach((item) => item.classList.remove('active'));
+      loadChatList();
+    }
+
     async function selectChat(userId, userName) {
       currentChatUser = { id: userId, name: userName };
       
       // Update UI
       document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
-      document.getElementById(`chat-item-${userId}`)?.classList.add('active');
+      const listItem = document.getElementById(`chat-item-${userId}`);
+      listItem?.classList.add('active');
+      listItem?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       
       document.getElementById('empty-chat').style.display = 'none';
-      document.getElementById('active-chat').style.display = 'flex';
+      document.getElementById('active-chat')?.classList.add('visible');
+      openMobileChatThread();
       
       document.getElementById('chat-header-name').textContent = userName;
       document.getElementById('chat-header-avatar').textContent = userName.charAt(0);
@@ -1984,11 +2135,13 @@
         scrollToBottom();
         
         // Emit read receipt
-        socket.emit('mark_read', {
-          sender_id: userId,
-          reader_id: currentUser.id,
-          reader_name: currentUser.name
-        });
+        if (socket) {
+          socket.emit('mark_read', {
+            sender_id: userId,
+            reader_id: currentUser.id,
+            reader_name: currentUser.name
+          });
+        }
         
       } catch (err) {
         console.error('Failed to load messages:', err);
@@ -2000,25 +2153,57 @@
     function displayMessage(msg, isOwn) {
       const container = document.getElementById('messages-container');
       const time = formatTime(msg.created_at);
+      const mid = msg.id != null ? String(msg.id) : '';
       
       const wrapper = document.createElement('div');
       wrapper.className = `message-wrapper ${isOwn ? 'sent' : 'received'}`;
+      if (mid) wrapper.dataset.messageId = mid;
+      
+      const deleteBtn = isOwn
+        ? `<button type="button" class="message-delete" data-message-id="${mid}" title="Delete message" aria-label="Delete message"><i class="fas fa-trash-alt"></i></button>`
+        : '';
       
       wrapper.innerHTML = `
         <div class="message ${isOwn ? 'sent' : 'received'}">
           <div class="message-content">${escapeHtml(msg.message)}</div>
           <div class="message-meta">
             <span class="message-time">${time}</span>
-            ${isOwn ? `<span class="message-status" id="status-${msg.id}"><i class="fas fa-check"></i></span>` : ''}
+            ${isOwn ? `<span class="message-status" id="status-${mid}"><i class="fas fa-check"></i></span>` : ''}
           </div>
         </div>
+        ${deleteBtn}
       `;
       
       container.appendChild(wrapper);
+      return wrapper;
     }
 
-    function handleKeyPress(e) {
-      if (e.key === 'Enter') {
+    async function deleteMessage(messageId) {
+      const id = Number(messageId);
+      if (!id) return;
+      if (!confirm('Delete this message?')) return;
+      try {
+        const res = await fetch(`${API}/messages/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Delete failed');
+        }
+        document
+          .querySelector(`[data-message-id="${String(id)}"]`)
+          ?.closest('.message-wrapper')
+          ?.remove();
+        loadChatList();
+      } catch (err) {
+        alert(err.message || 'Could not delete message');
+      }
+    }
+
+    function handleMessageKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
         sendMessage();
         return;
       }
@@ -2055,15 +2240,17 @@
         sender_id: currentUser.id
       };
       
-      displayMessage(tempMsg, true);
+      const messageRow = displayMessage(tempMsg, true);
       scrollToBottom();
       input.value = '';
       
       // Stop typing
-      socket.emit('stop_typing', {
-        sender_id: currentUser.id,
-        receiver_id: currentChatUser.id
-      });
+      if (socket) {
+        socket.emit('stop_typing', {
+          sender_id: currentUser.id,
+          receiver_id: currentChatUser.id
+        });
+      }
       
       try {
         const res = await fetch(`${API}/messages`, {
@@ -2084,17 +2271,26 @@
         }
 
         const savedMsg = await res.json();
-        
-        // Update status
+        const realId = savedMsg.id;
+
+        if (messageRow && realId != null) {
+          const sid = String(realId);
+          messageRow.dataset.messageId = sid;
+          const delBtn = messageRow.querySelector('.message-delete');
+          if (delBtn) delBtn.dataset.messageId = sid;
+        }
+
         const statusEl = document.getElementById(`status-${tempMsg.id}`);
-        if (statusEl) {
+        if (statusEl && realId != null) {
+          statusEl.id = `status-${realId}`;
           statusEl.innerHTML = '<i class="fas fa-check-double"></i>';
-          statusEl.classList.add('read');
         }
         
         loadChatList();
       } catch (err) {
         console.error('Failed to send:', err);
+        messageRow?.remove();
+        input.value = text;
         alert(err.message || 'Failed to send message');
       }
     }
@@ -2110,12 +2306,20 @@
 
     function scrollToBottom() {
       const container = document.getElementById('messages-container');
-      container.scrollTop = container.scrollHeight;
+      if (!container) return;
+      const anchor = () => {
+        container.scrollTop = container.scrollHeight;
+      };
+      requestAnimationFrame(() => {
+        requestAnimationFrame(anchor);
+      });
     }
 
     function startChat(userId, userName) {
       showPage('chat');
-      setTimeout(() => selectChat(userId, userName), 100);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => selectChat(userId, userName));
+      });
     }
 
     // ============================================
