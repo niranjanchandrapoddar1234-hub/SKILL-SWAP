@@ -358,6 +358,32 @@ app.put("/sessions/:id/accept", authenticateToken, async (req, res) => {
   }
 });
 
+// REJECT SESSION (ADDED)
+app.put("/sessions/:id/reject", authenticateToken, async (req, res) => {
+  try {
+    const session = await pool.query(
+      "SELECT * FROM sessions WHERE id = $1 AND partner_id = $2 AND status = 'pending'",
+      [req.params.id, req.user.userId]
+    );
+    
+    if (session.rows.length === 0) return res.status(403).json({ error: "Unauthorized" });
+    
+    await pool.query("UPDATE sessions SET status = 'cancelled' WHERE id = $1", [req.params.id]);
+    
+    const requesterId = session.rows[0].requester_id;
+    await pool.query(
+      `INSERT INTO notifications (user_id, type, title, message) 
+       VALUES ($1, 'session_rejected', 'Session Rejected', $2)`,
+      [requesterId, `Your session request was declined`]
+    );
+    
+    io.to(`user_${requesterId}`).emit("notification", { type: "session_rejected" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to reject" });
+  }
+});
+
 // START SESSION (TIMER BEGINS)
 app.post("/sessions/:id/start", authenticateToken, async (req, res) => {
   try {
@@ -527,63 +553,247 @@ app.get("/notifications", authenticateToken, async (req, res) => {
   }
 });
 
-// MESSAGES
+// MARK NOTIFICATION AS READ (ADDED)
+app.put("/notifications/:id/read", authenticateToken, async (req, res) => {
+  try {
+    await pool.query(
+      "UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2",
+      [req.params.id, req.user.userId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to mark as read" });
+  }
+});
+
+// ============================================
+// MESSAGES - FULL FEATURED WITH DELETE
+// ============================================
+
+// GET MESSAGES BETWEEN USERS
 app.get("/messages/:userId", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT m.*, u.name as sender_name FROM messages m
        JOIN users u ON m.sender_id = u.id
-       WHERE (m.sender_id = $1 AND m.receiver_id = $2) OR (m.sender_id = $2 AND m.receiver_id = $1)
+       WHERE ((m.sender_id = $1 AND m.receiver_id = $2) OR (m.sender_id = $2 AND m.receiver_id = $1))
+       AND m.is_deleted = FALSE
        ORDER BY m.created_at ASC`,
       [req.user.userId, req.params.userId]
     );
-    await pool.query("UPDATE messages SET is_read = TRUE WHERE sender_id = $1 AND receiver_id = $2", [req.params.userId, req.user.userId]);
+    
+    // Mark messages as read
+    await pool.query(
+      "UPDATE messages SET is_read = TRUE WHERE sender_id = $1 AND receiver_id = $2 AND is_read = FALSE",
+      [req.params.userId, req.user.userId]
+    );
+    
     res.json(result.rows);
   } catch (err) {
+    console.error("Get messages error:", err);
     res.status(500).json({ error: "Failed to fetch messages" });
   }
 });
 
+// SEND MESSAGE
 app.post("/messages", authenticateToken, async (req, res) => {
   const { receiver_id, message } = req.body;
+  
   try {
+    // Verify receiver exists
+    const receiver = await pool.query("SELECT id FROM users WHERE id = $1", [receiver_id]);
+    if (receiver.rows.length === 0) {
+      return res.status(404).json({ error: "Receiver not found" });
+    }
+    
+    // Insert message
     const result = await pool.query(
-      `INSERT INTO messages (sender_id, receiver_id, message) VALUES ($1, $2, $3) RETURNING *`,
+      `INSERT INTO messages (sender_id, receiver_id, message) 
+       VALUES ($1, $2, $3) RETURNING *`,
       [req.user.userId, receiver_id, message]
     );
+    
+    // Add sender name to response
+    const messageWithSender = {
+      ...result.rows[0],
+      sender_name: req.user.name
+    };
+    
+    // Create notification
     await pool.query(
-      `INSERT INTO notifications (user_id, type, title, message) VALUES ($1, 'message', 'New Message', $2)`,
-      [receiver_id, `New message from ${req.user.name}`]
+      `INSERT INTO notifications (user_id, type, title, message, related_id) 
+       VALUES ($1, 'message', 'New Message', $2, $3)`,
+      [receiver_id, `New message from ${req.user.name}`, result.rows[0].id]
     );
-    io.to(`user_${receiver_id}`).emit("new_message", { ...result.rows[0], sender_name: req.user.name });
-    res.json(result.rows[0]);
+    
+    // Emit real-time event to receiver
+    io.to(`user_${receiver_id}`).emit("new_message", messageWithSender);
+    
+    res.json(messageWithSender);
   } catch (err) {
+    console.error("Send message error:", err);
     res.status(500).json({ error: "Failed to send message" });
   }
 });
 
+// DELETE MESSAGE (NEW ENDPOINT)
+app.delete("/messages/:id", authenticateToken, async (req, res) => {
+  try {
+    // Verify the message belongs to the current user (sender only can delete)
+    const check = await pool.query(
+      "SELECT * FROM messages WHERE id = $1 AND sender_id = $2",
+      [req.params.id, req.user.userId]
+    );
+    
+    if (check.rows.length === 0) {
+      return res.status(403).json({ error: "Can only delete your own messages" });
+    }
+    
+    const message = check.rows[0];
+    
+    // Hard delete from database
+    await pool.query("DELETE FROM messages WHERE id = $1", [req.params.id]);
+    
+    // Notify receiver about deletion via socket
+    io.to(`user_${message.receiver_id}`).emit("message_deleted", { 
+      message_id: req.params.id,
+      sender_id: req.user.userId
+    });
+    
+    res.json({ success: true, message: "Message deleted" });
+  } catch (err) {
+    console.error("Delete message error:", err);
+    res.status(500).json({ error: "Failed to delete message" });
+  }
+});
+
+// EDIT MESSAGE (NEW ENDPOINT - BONUS)
+app.put("/messages/:id", authenticateToken, async (req, res) => {
+  const { message } = req.body;
+  
+  try {
+    // Verify ownership
+    const check = await pool.query(
+      "SELECT * FROM messages WHERE id = $1 AND sender_id = $2",
+      [req.params.id, req.user.userId]
+    );
+    
+    if (check.rows.length === 0) {
+      return res.status(403).json({ error: "Can only edit your own messages" });
+    }
+    
+    const oldMessage = check.rows[0];
+    
+    // Update message
+    const result = await pool.query(
+      "UPDATE messages SET message = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *",
+      [message, req.params.id]
+    );
+    
+    // Notify receiver about edit
+    io.to(`user_${oldMessage.receiver_id}`).emit("message_edited", {
+      message_id: req.params.id,
+      new_message: message,
+      sender_id: req.user.userId
+    });
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Edit message error:", err);
+    res.status(500).json({ error: "Failed to edit message" });
+  }
+});
+
+// GET CHAT LIST
 app.get("/chat-list", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT DISTINCT u.id, u.name, u.is_online,
-        (SELECT message FROM messages WHERE ((sender_id = u.id AND receiver_id = $1) OR (sender_id = $1 AND receiver_id = u.id)) ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = $1 AND is_read = FALSE) as unread_count
-       FROM users u JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = $1) OR (m.sender_id = $1 AND m.receiver_id = u.id)
-       WHERE u.id != $1`,
+        (SELECT message FROM messages 
+         WHERE ((sender_id = u.id AND receiver_id = $1) OR (sender_id = $1 AND receiver_id = u.id)) 
+         AND is_deleted = FALSE
+         ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT created_at FROM messages 
+         WHERE ((sender_id = u.id AND receiver_id = $1) OR (sender_id = $1 AND receiver_id = u.id))
+         AND is_deleted = FALSE
+         ORDER BY created_at DESC LIMIT 1) as last_message_time,
+        (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = $1 AND is_read = FALSE AND is_deleted = FALSE) as unread_count
+       FROM users u 
+       JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = $1) OR (m.sender_id = $1 AND m.receiver_id = u.id)
+       WHERE u.id != $1
+       ORDER BY last_message_time DESC NULLS LAST`,
       [req.user.userId]
     );
     res.json(result.rows);
   } catch (err) {
+    console.error("Chat list error:", err);
     res.status(500).json({ error: "Failed to fetch chat list" });
   }
 });
 
-// Socket.io
+// ============================================
+// SOCKET.IO - FULL EVENT HANDLING
+// ============================================
+
 io.on("connection", (socket) => {
-  socket.on("join", (userId) => socket.join(`user_${userId}`));
+  console.log("Client connected:", socket.id);
+  
+  // Join user-specific room
+  socket.on("join", (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`User ${userId} joined their room`);
+    
+    // Update online status
+    pool.query("UPDATE users SET is_online = TRUE WHERE id = $1", [userId]);
+    
+    // Broadcast to friends/contacts that user is online
+    socket.broadcast.emit("user_online", { user_id: userId });
+  });
+  
+  // Handle typing indicators
+  socket.on("typing", (data) => {
+    io.to(`user_${data.receiver_id}`).emit("typing", {
+      sender_id: data.sender_id,
+      is_typing: true
+    });
+  });
+  
+  socket.on("stop_typing", (data) => {
+    io.to(`user_${data.receiver_id}`).emit("typing", {
+      sender_id: data.sender_id,
+      is_typing: false
+    });
+  });
+  
+  // Handle message read receipts
+  socket.on("mark_read", (data) => {
+    io.to(`user_${data.sender_id}`).emit("message_read", {
+      message_ids: data.message_ids,
+      reader_id: data.reader_id
+    });
+  });
+  
+  // Handle message deletion relay (for cross-device sync)
+  socket.on("message_deleted", (data) => {
+    // Relay to receiver if they're online
+    io.to(`user_${data.receiver_id}`).emit("message_deleted", {
+      message_id: data.message_id,
+      sender_id: data.sender_id
+    });
+  });
+  
+  // Handle disconnect
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
 });
+
+// ============================================
+// SERVER START
+// ============================================
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 SkillSwap Server running on port ${PORT}`);
+  console.log(`📡 Socket.IO ready for real-time connections`);
 });
