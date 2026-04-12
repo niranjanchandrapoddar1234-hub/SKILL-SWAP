@@ -645,6 +645,24 @@ app.get("/chat-list", authenticateToken, async (req, res) => {
   }
 });
 
+// Optional TURN for WebRTC (set WEBRTC_TURN_URL, WEBRTC_TURN_USER, WEBRTC_TURN_PASS)
+app.get("/webrtc-ice", authenticateToken, (req, res) => {
+  const defaults = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" }
+  ];
+  const servers = [...defaults];
+  const turnUrl = process.env.WEBRTC_TURN_URL;
+  if (turnUrl) {
+    servers.push({
+      urls: turnUrl,
+      username: process.env.WEBRTC_TURN_USER || "",
+      credential: process.env.WEBRTC_TURN_PASS || ""
+    });
+  }
+  res.json({ iceServers: servers });
+});
+
 // ============================================
 // SOCKET.IO - CLEAN
 // ============================================
@@ -671,6 +689,50 @@ io.on("connection", (socket) => {
         reader_id: data.reader_id
       });
     }
+  });
+
+  // WebRTC signaling (in-app voice / video — relay only, no media on server)
+  socket.on("webrtc_invite", (data) => {
+    if (!data?.to || !data?.callId || !data?.offer || data.from == null) return;
+    socket.to(`user_${data.to}`).emit("webrtc_incoming", {
+      from: data.from,
+      fromName: data.fromName || "Someone",
+      callType: data.callType === "voice" ? "voice" : "video",
+      offer: data.offer,
+      callId: data.callId
+    });
+  });
+
+  socket.on("webrtc_answer", (data) => {
+    if (!data?.to || !data?.callId || !data?.answer || data.from == null) return;
+    socket.to(`user_${data.to}`).emit("webrtc_answer_received", {
+      from: data.from,
+      answer: data.answer,
+      callId: data.callId
+    });
+  });
+
+  socket.on("webrtc_ice", (data) => {
+    if (!data?.to || !data?.callId || !data?.candidate || data.from == null) return;
+    socket.to(`user_${data.to}`).emit("webrtc_ice_received", {
+      from: data.from,
+      candidate: data.candidate,
+      callId: data.callId
+    });
+  });
+
+  socket.on("webrtc_end", (data) => {
+    if (!data?.to || !data?.callId) return;
+    socket.to(`user_${data.to}`).emit("webrtc_end_received", {
+      callId: data.callId
+    });
+  });
+
+  socket.on("webrtc_reject", (data) => {
+    if (!data?.to || !data?.callId) return;
+    socket.to(`user_${data.to}`).emit("webrtc_reject_received", {
+      callId: data.callId
+    });
   });
 
   socket.on("disconnect", () => {

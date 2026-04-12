@@ -965,6 +965,292 @@
       background: rgba(0,0,0,0.05);
       color: var(--text);
     }
+
+    .chat-header-actions button.call-voice-btn:hover {
+      color: var(--success);
+    }
+
+    .chat-header-actions button.call-video-btn:hover {
+      color: var(--primary);
+    }
+
+    .chat-header-more {
+      position: relative;
+    }
+
+    .chat-header-more summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      color: var(--text-light);
+      font-size: 1.1rem;
+    }
+
+    .chat-header-more summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .chat-header-more[open] summary {
+      background: rgba(0,0,0,0.05);
+      color: var(--text);
+    }
+
+    .chat-more-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.35rem;
+      z-index: 300;
+      min-width: 180px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .chat-more-menu button {
+      width: 100%;
+      text-align: left;
+      padding: 0.6rem 0.85rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .chat-more-menu button:hover {
+      background: var(--bg);
+    }
+
+    /* In-app WebRTC calls */
+    .webrtc-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      background: #0f172a;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-end;
+    }
+
+    .webrtc-overlay.active {
+      display: flex;
+    }
+
+    .webrtc-remote-wrap {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+      background: #020617;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #webrtc-remote-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    #webrtc-remote-video.visible {
+      display: block;
+    }
+
+    .webrtc-voice-backdrop {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: white;
+      padding: 2rem;
+      z-index: 1;
+    }
+
+    .webrtc-voice-backdrop .big-avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: 700;
+      margin: 0 auto 1.25rem;
+    }
+
+    #webrtc-local-video {
+      position: absolute;
+      bottom: 120px;
+      right: 16px;
+      width: 112px;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.35);
+      z-index: 2;
+      display: none;
+    }
+
+    #webrtc-local-video.visible {
+      display: block;
+    }
+
+    #webrtc-remote-audio {
+      display: none;
+    }
+
+    .webrtc-bottom-bar {
+      flex-shrink: 0;
+      padding: 1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
+      background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    }
+
+    .webrtc-status-text {
+      text-align: center;
+      color: rgba(255,255,255,0.85);
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    .webrtc-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .webrtc-ctrl {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      transition: transform 0.15s, opacity 0.15s;
+      color: white;
+    }
+
+    .webrtc-ctrl:active {
+      transform: scale(0.95);
+    }
+
+    .webrtc-ctrl.mute {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .webrtc-ctrl.mute.off {
+      background: var(--danger);
+    }
+
+    .webrtc-ctrl.cam {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .webrtc-ctrl.cam.off {
+      background: var(--warning);
+    }
+
+    .webrtc-ctrl.hangup {
+      background: var(--danger);
+      width: 64px;
+      height: 64px;
+      font-size: 1.5rem;
+    }
+
+    .webrtc-incoming-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 5100;
+      background: rgba(15, 23, 42, 0.92);
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .webrtc-incoming-overlay.active {
+      display: flex;
+    }
+
+    .webrtc-incoming-card {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 2rem 1.75rem;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.35);
+    }
+
+    .webrtc-incoming-card .inc-avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      font-size: 2.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+    }
+
+    .webrtc-incoming-card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .webrtc-incoming-card p {
+      color: var(--text-light);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .webrtc-incoming-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .webrtc-incoming-actions button {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: white;
+    }
+
+    .webrtc-incoming-actions .accept {
+      background: var(--success);
+    }
+
+    .webrtc-incoming-actions .decline {
+      background: var(--danger);
+    }
     
     /* Messages Area */
     .messages-container {
@@ -1017,6 +1303,18 @@
     @media (max-width: 968px) {
       .message-delete {
         opacity: 1;
+      }
+
+      .chat-header-actions {
+        gap: 0.2rem;
+      }
+
+      .chat-header-actions button,
+      .chat-header-more summary {
+        padding: 0.35rem;
+        font-size: 0.95rem;
+        width: 36px;
+        height: 36px;
       }
     }
     
@@ -1662,12 +1960,23 @@
                 <button type="button" onclick="openBookModal()" title="Book session">
                   <i class="fas fa-calendar-plus"></i>
                 </button>
-                <button type="button" title="Open meeting link" onclick="openChatMeetingLink()">
+                <button type="button" class="call-voice-btn" title="Voice call" onclick="startWebRtcCall('voice')">
+                  <i class="fas fa-phone-alt"></i>
+                </button>
+                <button type="button" class="call-video-btn" title="Video call (in app)" onclick="startWebRtcCall('video')">
                   <i class="fas fa-video"></i>
                 </button>
-                <button type="button" title="Session shortcuts" onclick="showPage('sessions')">
-                  <i class="fas fa-ellipsis-v"></i>
-                </button>
+                <details class="chat-header-more" id="chat-header-more">
+                  <summary title="More"><i class="fas fa-ellipsis-v"></i></summary>
+                  <div class="chat-more-menu">
+                    <button type="button" onclick="closeChatHeaderMenu(); showPage('sessions');">
+                      <i class="fas fa-calendar-check"></i> My sessions
+                    </button>
+                    <button type="button" onclick="closeChatHeaderMenu(); openChatMeetingLink();">
+                      <i class="fas fa-external-link-alt"></i> Google Meet link
+                    </button>
+                  </div>
+                </details>
               </div>
             </div>
 
@@ -1706,6 +2015,49 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- WebRTC in-app voice / video call -->
+  <div id="webrtc-incoming-overlay" class="webrtc-incoming-overlay" aria-hidden="true">
+    <div class="webrtc-incoming-card">
+      <div class="inc-avatar" id="webrtc-inc-avatar">?</div>
+      <h3 id="webrtc-inc-name">Incoming call</h3>
+      <p id="webrtc-inc-sub">Voice call</p>
+      <div class="webrtc-incoming-actions">
+        <button type="button" class="decline" title="Decline" onclick="webrtcDeclineIncoming()" aria-label="Decline call">
+          <i class="fas fa-phone-slash"></i>
+        </button>
+        <button type="button" class="accept" title="Accept" onclick="webrtcAcceptIncoming()" aria-label="Accept call">
+          <i class="fas fa-phone"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="webrtc-overlay" class="webrtc-overlay" aria-hidden="true">
+    <div class="webrtc-remote-wrap">
+      <video id="webrtc-remote-video" playsinline autoplay></video>
+      <audio id="webrtc-remote-audio" autoplay playsinline></audio>
+      <div class="webrtc-voice-backdrop" id="webrtc-voice-backdrop">
+        <div class="big-avatar" id="webrtc-active-avatar">?</div>
+        <div id="webrtc-active-name" style="font-size:1.25rem;font-weight:600;">—</div>
+      </div>
+      <video id="webrtc-local-video" playsinline autoplay muted></video>
+    </div>
+    <div class="webrtc-bottom-bar">
+      <div class="webrtc-status-text" id="webrtc-status-text">Connecting…</div>
+      <div class="webrtc-controls">
+        <button type="button" class="webrtc-ctrl mute" id="webrtc-btn-mute" title="Mute" onclick="webrtcToggleMute()">
+          <i class="fas fa-microphone"></i>
+        </button>
+        <button type="button" class="webrtc-ctrl cam" id="webrtc-btn-cam" title="Camera" onclick="webrtcToggleCamera()">
+          <i class="fas fa-video"></i>
+        </button>
+        <button type="button" class="webrtc-ctrl hangup" title="End call" onclick="webrtcHangup()">
+          <i class="fas fa-phone-slash"></i>
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Book Session Modal -->
@@ -1885,6 +2237,23 @@
     let typingTimeout = null;
     let dashboardSessionTimerInterval = null;
     let dashboardOngoingSessionId = null;
+
+    const WEBRTC_RTC_CONFIG = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    let webrtcPC = null;
+    let webrtcLocalStream = null;
+    let webrtcCallId = null;
+    let webrtcPeerId = null;
+    let webrtcCallType = null;
+    let webrtcCallState = 'idle';
+    let webrtcPendingInvite = null;
+    let webrtcRemoteIceQueue = [];
+    let webrtcIceCache = null;
 
     // ============================================
     // INITIALIZATION
@@ -2114,6 +2483,7 @@
     }
 
     function logout() {
+      if (webrtcCallState !== 'idle') webrtcHangup();
       clearInterval(dashboardSessionTimerInterval);
       dashboardSessionTimerInterval = null;
       localStorage.removeItem('token');
@@ -2187,6 +2557,72 @@
         loadSessions('upcoming');
         loadDashboard();
         refreshCurrentUser();
+      });
+
+      socket.on('webrtc_incoming', (data) => {
+        if (!data?.callId || data.from == null) return;
+        if (webrtcCallState !== 'idle') {
+          socket.emit('webrtc_reject', {
+            to: data.from,
+            from: currentUser.id,
+            callId: data.callId
+          });
+          return;
+        }
+        webrtcPendingInvite = data;
+        webrtcCallId = data.callId;
+        webrtcPeerId = data.from;
+        webrtcCallType = data.callType === 'voice' ? 'voice' : 'video';
+        webrtcCallState = 'incoming';
+        webrtcRemoteIceQueue = [];
+        document.getElementById('webrtc-inc-name').textContent = data.fromName || 'Someone';
+        document.getElementById('webrtc-inc-avatar').textContent = (data.fromName || '?').charAt(0);
+        document.getElementById('webrtc-inc-sub').textContent =
+          webrtcCallType === 'video' ? 'Video call' : 'Voice call';
+        document.getElementById('webrtc-incoming-overlay').classList.add('active');
+        document.getElementById('webrtc-incoming-overlay').setAttribute('aria-hidden', 'false');
+      });
+
+      socket.on('webrtc_answer_received', async (data) => {
+        if (!data?.answer || data.callId !== webrtcCallId || Number(data.from) !== Number(webrtcPeerId)) return;
+        if (!webrtcPC) return;
+        try {
+          await webrtcPC.setRemoteDescription(new RTCSessionDescription(data.answer));
+          await webrtcFlushRemoteIce();
+          document.getElementById('webrtc-status-text').textContent = 'Connecting…';
+        } catch (e) {
+          console.error(e);
+          alert('Could not connect the call.');
+          webrtcHangup();
+        }
+      });
+
+      socket.on('webrtc_ice_received', (data) => {
+        if (!data?.candidate || data.callId !== webrtcCallId) return;
+        if (Number(data.from) !== Number(webrtcPeerId)) return;
+        webrtcQueueOrAddIce(data.candidate);
+      });
+
+      socket.on('webrtc_end_received', (data) => {
+        if (!data?.callId) return;
+        if (webrtcPendingInvite && webrtcPendingInvite.callId === data.callId) {
+          document.getElementById('webrtc-incoming-overlay').classList.remove('active');
+          document.getElementById('webrtc-incoming-overlay').setAttribute('aria-hidden', 'true');
+          webrtcPendingInvite = null;
+          webrtcCallState = 'idle';
+          webrtcCallId = null;
+          webrtcPeerId = null;
+          webrtcCallType = null;
+          return;
+        }
+        if (data.callId !== webrtcCallId) return;
+        webrtcCleanupCall();
+      });
+
+      socket.on('webrtc_reject_received', (data) => {
+        if (!data?.callId || data.callId !== webrtcCallId) return;
+        alert('Call declined.');
+        webrtcCleanupCall();
       });
     }
 
@@ -3174,6 +3610,367 @@
       sessionTimerInterval = null;
       activeSessionId = null;
       document.getElementById('live-session-modal').classList.remove('active');
+    }
+
+    function closeChatHeaderMenu() {
+      const d = document.getElementById('chat-header-more');
+      if (d) d.open = false;
+    }
+
+    async function webrtcLoadIceServers() {
+      if (webrtcIceCache) return webrtcIceCache;
+      if (!token) {
+        webrtcIceCache = WEBRTC_RTC_CONFIG.iceServers;
+        return webrtcIceCache;
+      }
+      try {
+        const r = await fetch(`${API}/webrtc-ice`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (r.ok) {
+          const j = await r.json();
+          if (Array.isArray(j.iceServers) && j.iceServers.length) {
+            webrtcIceCache = j.iceServers;
+            return webrtcIceCache;
+          }
+        }
+      } catch (e) {
+        console.warn('webrtc-ice', e);
+      }
+      webrtcIceCache = WEBRTC_RTC_CONFIG.iceServers;
+      return webrtcIceCache;
+    }
+
+    async function webrtcQueueOrAddIce(candidateInit) {
+      if (!webrtcPC) {
+        webrtcRemoteIceQueue.push(candidateInit);
+        return;
+      }
+      if (!webrtcPC.remoteDescription) {
+        webrtcRemoteIceQueue.push(candidateInit);
+        return;
+      }
+      try {
+        await webrtcPC.addIceCandidate(new RTCIceCandidate(candidateInit));
+      } catch (e) {
+        console.warn('ICE add failed', e);
+      }
+    }
+
+    async function webrtcFlushRemoteIce() {
+      if (!webrtcPC) return;
+      const batch = webrtcRemoteIceQueue.splice(0);
+      for (const c of batch) {
+        try {
+          await webrtcPC.addIceCandidate(new RTCIceCandidate(c));
+        } catch (e) {
+          console.warn('ICE flush', e);
+        }
+      }
+    }
+
+    function webrtcCreatePeerConnection(iceServers) {
+      const servers =
+        iceServers && iceServers.length ? iceServers : WEBRTC_RTC_CONFIG.iceServers;
+      const pc = new RTCPeerConnection({ iceServers: servers });
+
+      pc.ontrack = (ev) => {
+        const [stream] = ev.streams;
+        const rv = document.getElementById('webrtc-remote-video');
+        const ra = document.getElementById('webrtc-remote-audio');
+        if (webrtcCallType === 'video') {
+          rv.srcObject = stream;
+          rv.classList.add('visible');
+          ra.srcObject = null;
+          document.getElementById('webrtc-voice-backdrop').style.display = 'none';
+        } else {
+          rv.srcObject = null;
+          rv.classList.remove('visible');
+          ra.srcObject = stream;
+          document.getElementById('webrtc-voice-backdrop').style.display = 'flex';
+        }
+        document.getElementById('webrtc-status-text').textContent = 'Connected';
+        webrtcCallState = 'connected';
+      };
+
+      pc.onconnectionstatechange = () => {
+        const st = pc.connectionState;
+        if (st === 'failed') {
+          document.getElementById('webrtc-status-text').textContent =
+            'Connection failed — try again or check firewall / VPN.';
+        } else if (st === 'disconnected') {
+          document.getElementById('webrtc-status-text').textContent = 'Disconnected';
+        } else if (st === 'connected') {
+          document.getElementById('webrtc-status-text').textContent = 'Connected';
+        }
+      };
+
+      pc.onicecandidate = (e) => {
+        if (e.candidate && socket && webrtcPeerId != null && webrtcCallId) {
+          socket.emit('webrtc_ice', {
+            to: webrtcPeerId,
+            from: currentUser.id,
+            callId: webrtcCallId,
+            candidate: e.candidate.toJSON()
+          });
+        }
+      };
+
+      return pc;
+    }
+
+    function webrtcCleanupCall() {
+      if (webrtcLocalStream) {
+        webrtcLocalStream.getTracks().forEach((t) => t.stop());
+        webrtcLocalStream = null;
+      }
+      if (webrtcPC) {
+        webrtcPC.close();
+        webrtcPC = null;
+      }
+      const rv = document.getElementById('webrtc-remote-video');
+      if (rv) {
+        rv.srcObject = null;
+        rv.classList.remove('visible');
+      }
+      const ra = document.getElementById('webrtc-remote-audio');
+      if (ra) ra.srcObject = null;
+      const lv = document.getElementById('webrtc-local-video');
+      if (lv) {
+        lv.srcObject = null;
+        lv.classList.remove('visible');
+      }
+      document.getElementById('webrtc-overlay')?.classList.remove('active');
+      document.getElementById('webrtc-overlay')?.setAttribute('aria-hidden', 'true');
+      document.getElementById('webrtc-incoming-overlay')?.classList.remove('active');
+      document.getElementById('webrtc-incoming-overlay')?.setAttribute('aria-hidden', 'true');
+      document.getElementById('webrtc-voice-backdrop').style.display = 'flex';
+      webrtcRemoteIceQueue = [];
+      webrtcCallId = null;
+      webrtcPeerId = null;
+      webrtcCallType = null;
+      webrtcCallState = 'idle';
+      webrtcPendingInvite = null;
+      const muteBtn = document.getElementById('webrtc-btn-mute');
+      if (muteBtn) {
+        muteBtn.classList.remove('off');
+        muteBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+      }
+      const camBtn = document.getElementById('webrtc-btn-cam');
+      if (camBtn) {
+        camBtn.classList.remove('off');
+        camBtn.innerHTML = '<i class="fas fa-video"></i>';
+      }
+    }
+
+    function webrtcHangup() {
+      if (socket && webrtcPeerId != null && webrtcCallId) {
+        socket.emit('webrtc_end', {
+          to: webrtcPeerId,
+          from: currentUser.id,
+          callId: webrtcCallId
+        });
+      }
+      webrtcCleanupCall();
+    }
+
+    function webrtcDeclineIncoming() {
+      if (webrtcPendingInvite && socket) {
+        socket.emit('webrtc_reject', {
+          to: webrtcPendingInvite.from,
+          from: currentUser.id,
+          callId: webrtcPendingInvite.callId
+        });
+      }
+      document.getElementById('webrtc-incoming-overlay').classList.remove('active');
+      document.getElementById('webrtc-incoming-overlay').setAttribute('aria-hidden', 'true');
+      webrtcPendingInvite = null;
+      webrtcCallState = 'idle';
+      webrtcCallId = null;
+      webrtcPeerId = null;
+      webrtcCallType = null;
+      webrtcRemoteIceQueue = [];
+    }
+
+    async function webrtcAcceptIncoming() {
+      const inv = webrtcPendingInvite;
+      if (!inv || !socket || !currentUser) return;
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        alert('Your browser does not support in-app calls.');
+        webrtcDeclineIncoming();
+        return;
+      }
+
+      document.getElementById('webrtc-incoming-overlay').classList.remove('active');
+      document.getElementById('webrtc-incoming-overlay').setAttribute('aria-hidden', 'true');
+      webrtcPendingInvite = null;
+
+      webrtcCallId = inv.callId;
+      webrtcPeerId = inv.from;
+      webrtcCallType = inv.callType === 'voice' ? 'voice' : 'video';
+      webrtcCallState = 'connecting';
+
+      try {
+        webrtcLocalStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: webrtcCallType === 'video' ? { facingMode: 'user' } : false
+        });
+      } catch (e) {
+        alert('Could not access microphone or camera.');
+        socket.emit('webrtc_reject', {
+          to: inv.from,
+          from: currentUser.id,
+          callId: inv.callId
+        });
+        webrtcCleanupCall();
+        return;
+      }
+
+      const iceServers = await webrtcLoadIceServers();
+      webrtcPC = webrtcCreatePeerConnection(iceServers);
+      webrtcLocalStream.getTracks().forEach((t) => webrtcPC.addTrack(t, webrtcLocalStream));
+
+      const locVideo = document.getElementById('webrtc-local-video');
+      if (webrtcCallType === 'video') {
+        locVideo.srcObject = webrtcLocalStream;
+        locVideo.classList.add('visible');
+        document.getElementById('webrtc-voice-backdrop').style.display = 'none';
+      } else {
+        locVideo.classList.remove('visible');
+        locVideo.srcObject = null;
+        document.getElementById('webrtc-voice-backdrop').style.display = 'flex';
+      }
+
+      try {
+        await webrtcPC.setRemoteDescription(new RTCSessionDescription(inv.offer));
+        await webrtcFlushRemoteIce();
+        const answer = await webrtcPC.createAnswer();
+        await webrtcPC.setLocalDescription(answer);
+        socket.emit('webrtc_answer', {
+          to: inv.from,
+          from: currentUser.id,
+          callId: inv.callId,
+          answer: { type: answer.type, sdp: answer.sdp }
+        });
+      } catch (e) {
+        console.error(e);
+        alert('Could not start the call.');
+        webrtcHangup();
+        return;
+      }
+
+      document.getElementById('webrtc-active-name').textContent = inv.fromName || 'Partner';
+      document.getElementById('webrtc-active-avatar').textContent = (inv.fromName || '?').charAt(0);
+      document.getElementById('webrtc-status-text').textContent = 'Connecting…';
+      document.getElementById('webrtc-btn-cam').style.display =
+        webrtcCallType === 'video' ? 'flex' : 'none';
+      document.getElementById('webrtc-overlay').classList.add('active');
+      document.getElementById('webrtc-overlay').setAttribute('aria-hidden', 'false');
+    }
+
+    async function startWebRtcCall(type) {
+      if (!currentChatUser || !socket) {
+        alert('Open a conversation first.');
+        return;
+      }
+      if (webrtcCallState !== 'idle') {
+        alert('You are already in a call.');
+        return;
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        alert(
+          'Your browser does not support in-app calls. Use Chrome, Edge, or Safari over HTTPS (or localhost).'
+        );
+        return;
+      }
+
+      webrtcPeerId = currentChatUser.id;
+      webrtcCallType = type === 'voice' ? 'voice' : 'video';
+      webrtcCallId =
+        (typeof crypto !== 'undefined' && crypto.randomUUID && crypto.randomUUID()) ||
+        `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+      webrtcCallState = 'outgoing';
+      webrtcRemoteIceQueue = [];
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: webrtcCallType === 'video' ? { facingMode: 'user' } : false
+        });
+      } catch (e) {
+        alert(
+          'Could not access the microphone' +
+            (webrtcCallType === 'video' ? ' or camera' : '') +
+            '. Allow permissions and try again.'
+        );
+        webrtcCleanupCall();
+        return;
+      }
+
+      webrtcLocalStream = stream;
+      const iceServers = await webrtcLoadIceServers();
+      webrtcPC = webrtcCreatePeerConnection(iceServers);
+      webrtcLocalStream.getTracks().forEach((t) => webrtcPC.addTrack(t, webrtcLocalStream));
+
+      const locVideo = document.getElementById('webrtc-local-video');
+      if (webrtcCallType === 'video') {
+        locVideo.srcObject = webrtcLocalStream;
+        locVideo.classList.add('visible');
+        document.getElementById('webrtc-voice-backdrop').style.display = 'none';
+      } else {
+        locVideo.classList.remove('visible');
+        locVideo.srcObject = null;
+        document.getElementById('webrtc-voice-backdrop').style.display = 'flex';
+      }
+
+      document.getElementById('webrtc-active-name').textContent = currentChatUser.name;
+      document.getElementById('webrtc-active-avatar').textContent = currentChatUser.name.charAt(0);
+      document.getElementById('webrtc-remote-video').classList.remove('visible');
+      document.getElementById('webrtc-status-text').textContent = 'Calling…';
+      document.getElementById('webrtc-btn-cam').style.display =
+        webrtcCallType === 'video' ? 'flex' : 'none';
+      document.getElementById('webrtc-overlay').classList.add('active');
+      document.getElementById('webrtc-overlay').setAttribute('aria-hidden', 'false');
+
+      try {
+        const offer = await webrtcPC.createOffer();
+        await webrtcPC.setLocalDescription(offer);
+        socket.emit('webrtc_invite', {
+          to: webrtcPeerId,
+          from: currentUser.id,
+          fromName: currentUser.name,
+          callType: webrtcCallType,
+          callId: webrtcCallId,
+          offer: { type: offer.type, sdp: offer.sdp }
+        });
+      } catch (e) {
+        console.error(e);
+        alert('Could not start the call.');
+        webrtcHangup();
+      }
+    }
+
+    function webrtcToggleMute() {
+      if (!webrtcLocalStream) return;
+      const t = webrtcLocalStream.getAudioTracks()[0];
+      if (!t) return;
+      t.enabled = !t.enabled;
+      const btn = document.getElementById('webrtc-btn-mute');
+      btn.classList.toggle('off', !t.enabled);
+      btn.innerHTML = t.enabled
+        ? '<i class="fas fa-microphone"></i>'
+        : '<i class="fas fa-microphone-slash"></i>';
+    }
+
+    function webrtcToggleCamera() {
+      if (webrtcCallType !== 'video' || !webrtcLocalStream) return;
+      const t = webrtcLocalStream.getVideoTracks()[0];
+      if (!t) return;
+      t.enabled = !t.enabled;
+      const btn = document.getElementById('webrtc-btn-cam');
+      btn.classList.toggle('off', !t.enabled);
     }
 
     function focusMessageInput() {
