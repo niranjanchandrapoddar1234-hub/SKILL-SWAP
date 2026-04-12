@@ -15,26 +15,27 @@ const io = new Server(server, {
   }
 });
 
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  credentials: true
+}));
 app.use(express.json());
 
-// Configuration
+// PRODUCTION DATABASE CONFIGURATION
 const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "skillswap",
-  password: "RNTC143",
-  port: 5432,
+  connectionString: process.env.DATABASE_URL || 'postgres://postgres:RNTC143@localhost:5432/skillswap',
+  ssl: process.env.DATABASE_URL ? {
+    rejectUnauthorized: false
+  } : false
 });
 
-const JWT_SECRET = "your-secret-key-change-this-in-production";
-const MIN_SESSION_DURATION = 900; // 15 minutes in seconds
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const MIN_SESSION_DURATION = 900; // 15 minutes
 
 // Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  
   if (!token) return res.sendStatus(401);
   
   jwt.verify(token, JWT_SECRET, (err, user) => {
@@ -43,21 +44,6 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
-
-// Test route
-app.get("/", (req, res) => {
-  res.send("Skill Swap Anti-Cheat Server Running 🚀");
-});
-
-// Database setup check
-app.get("/setup", async (req, res) => {
-  try {
-    await pool.query("SELECT 1 FROM users LIMIT 1");
-    res.send("✅ Database connected!");
-  } catch (err) {
-    res.status(500).send("❌ Database error: " + err.message);
-  }
-});
 
 // Format duration helper
 function formatDuration(seconds) {
@@ -68,13 +54,17 @@ function formatDuration(seconds) {
   return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
+// Routes
+app.get("/", (req, res) => {
+  res.send("🚀 Skill Swap API Running");
+});
+
 // REGISTER
 app.post("/register", async (req, res) => {
   const { name, email, password, bio, location, skills_have, skills_want } = req.body;
   
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    
     const userResult = await pool.query(
       `INSERT INTO users (name, email, password, bio, location) 
        VALUES ($1,$2,$3,$4,$5) RETURNING id`,
@@ -83,7 +73,6 @@ app.post("/register", async (req, res) => {
     
     const userId = userResult.rows[0].id;
     
-    // Insert skills
     if (skills_have && Array.isArray(skills_have)) {
       for (const skill of skills_have) {
         await pool.query(
@@ -104,13 +93,11 @@ app.post("/register", async (req, res) => {
       }
     }
     
-    // Initialize user stats
     await pool.query("INSERT INTO user_stats (user_id) VALUES ($1)", [userId]);
-    
     res.status(201).json({ success: true, userId });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Registration failed: " + err.message });
+    res.status(500).json({ error: "Registration failed" });
   }
 });
 
@@ -147,10 +134,7 @@ app.post("/login", async (req, res) => {
       { expiresIn: "24h" }
     );
     
-    const skillsResult = await pool.query(
-      "SELECT * FROM skills WHERE user_id = $1",
-      [user.id]
-    );
+    const skillsResult = await pool.query("SELECT * FROM skills WHERE user_id = $1", [user.id]);
     
     res.json({
       token,
@@ -166,49 +150,33 @@ app.post("/login", async (req, res) => {
         is_online: true,
         skills_have: skillsResult.rows.filter(s => s.skill_type === 'have'),
         skills_want: skillsResult.rows.filter(s => s.skill_type === 'want'),
-        stats: {
-          total_sessions: user.total_sessions,
-          avg_rating: user.avg_rating
-        }
+        stats: { total_sessions: user.total_sessions, avg_rating: user.avg_rating }
       }
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Login failed" });
   }
 });
 
-// GET CURRENT USER PROFILE
+// GET PROFILE
 app.get("/profile", authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.userId;
-    
     const userResult = await pool.query(
-      `SELECT u.*, us.* 
-       FROM users u 
+      `SELECT u.*, us.* FROM users u 
        LEFT JOIN user_stats us ON u.id = us.user_id 
        WHERE u.id = $1`,
-      [userId]
+      [req.user.userId]
     );
     
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (userResult.rows.length === 0) return res.status(404).json({ error: "User not found" });
     
     const user = userResult.rows[0];
-    
-    const skillsResult = await pool.query(
-      "SELECT * FROM skills WHERE user_id = $1",
-      [userId]
-    );
-    
+    const skillsResult = await pool.query("SELECT * FROM skills WHERE user_id = $1", [req.user.userId]);
     const reviewsResult = await pool.query(
       `SELECT r.*, u.name as reviewer_name 
-       FROM reviews r 
-       JOIN users u ON r.reviewer_id = u.id
-       WHERE r.reviewee_id = $1 
-       ORDER BY r.created_at DESC`,
-      [userId]
+       FROM reviews r JOIN users u ON r.reviewer_id = u.id
+       WHERE r.reviewee_id = $1 ORDER BY r.created_at DESC`,
+      [req.user.userId]
     );
     
     res.json({
@@ -222,37 +190,25 @@ app.get("/profile", authenticateToken, async (req, res) => {
   }
 });
 
-// GET OTHER USER PROFILE BY ID
+// GET USER BY ID
 app.get("/user/:userId", authenticateToken, async (req, res) => {
   try {
-    const userId = req.params.userId;
-    
     const userResult = await pool.query(
-      `SELECT u.*, us.* 
-       FROM users u 
+      `SELECT u.*, us.* FROM users u 
        LEFT JOIN user_stats us ON u.id = us.user_id 
        WHERE u.id = $1`,
-      [userId]
+      [req.params.userId]
     );
     
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (userResult.rows.length === 0) return res.status(404).json({ error: "User not found" });
     
     const user = userResult.rows[0];
-    
-    const skillsResult = await pool.query(
-      "SELECT * FROM skills WHERE user_id = $1",
-      [userId]
-    );
-    
+    const skillsResult = await pool.query("SELECT * FROM skills WHERE user_id = $1", [req.params.userId]);
     const reviewsResult = await pool.query(
-      `SELECT r.*, u.name as reviewer_name 
-       FROM reviews r 
+      `SELECT r.*, u.name as reviewer_name FROM reviews r 
        JOIN users u ON r.reviewer_id = u.id
-       WHERE r.reviewee_id = $1 
-       ORDER BY r.created_at DESC`,
-      [userId]
+       WHERE r.reviewee_id = $1 ORDER BY r.created_at DESC`,
+      [req.params.userId]
     );
     
     res.json({
@@ -269,42 +225,22 @@ app.get("/user/:userId", authenticateToken, async (req, res) => {
 // SMART MATCHING
 app.get("/smart-matches", authenticateToken, async (req, res) => {
   try {
-    const { location, min_rating } = req.query;
-    
-    const mySkills = await pool.query(
-      "SELECT * FROM skills WHERE user_id = $1",
-      [req.user.userId]
-    );
-    
+    const mySkills = await pool.query("SELECT * FROM skills WHERE user_id = $1", [req.user.userId]);
     const myHave = mySkills.rows.filter(s => s.skill_type === 'have').map(s => s.skill_name.toLowerCase());
     const myWant = mySkills.rows.filter(s => s.skill_type === 'want').map(s => s.skill_name.toLowerCase());
     
-    let query = `
-      SELECT DISTINCT u.id, u.name, u.bio, u.location, u.points, u.level, u.is_online,
-             COALESCE(us.average_rating_received, 0) as avg_rating,
-             array_agg(DISTINCT CASE WHEN s.skill_type = 'have' THEN s.skill_name END) FILTER (WHERE s.skill_type = 'have') as skills_have,
-             array_agg(DISTINCT CASE WHEN s.skill_type = 'want' THEN s.skill_name END) FILTER (WHERE s.skill_type = 'want') as skills_want
-      FROM users u
-      LEFT JOIN skills s ON u.id = s.user_id
-      LEFT JOIN user_stats us ON u.id = us.user_id
-      WHERE u.id != $1
-    `;
-    
-    const params = [req.user.userId];
-    
-    if (location) {
-      params.push(`%${location}%`);
-      query += ` AND u.location ILIKE $${params.length}`;
-    }
-    
-    if (min_rating) {
-      params.push(min_rating);
-      query += ` AND COALESCE(us.average_rating_received, 0) >= $${params.length}`;
-    }
-    
-    query += ` GROUP BY u.id, us.average_rating_received`;
-    
-    const usersResult = await pool.query(query, params);
+    const usersResult = await pool.query(
+      `SELECT DISTINCT u.id, u.name, u.bio, u.location, u.points, u.level, u.is_online,
+       COALESCE(us.average_rating_received, 0) as avg_rating,
+       array_agg(DISTINCT CASE WHEN s.skill_type = 'have' THEN s.skill_name END) FILTER (WHERE s.skill_type = 'have') as skills_have,
+       array_agg(DISTINCT CASE WHEN s.skill_type = 'want' THEN s.skill_name END) FILTER (WHERE s.skill_type = 'want') as skills_want
+       FROM users u
+       LEFT JOIN skills s ON u.id = s.user_id
+       LEFT JOIN user_stats us ON u.id = us.user_id
+       WHERE u.id != $1
+       GROUP BY u.id, us.average_rating_received`,
+      [req.user.userId]
+    );
     
     const matches = usersResult.rows.map(user => {
       const theyHave = (user.skills_have || []).map(s => s.toLowerCase());
@@ -331,45 +267,25 @@ app.get("/smart-matches", authenticateToken, async (req, res) => {
     
     res.json(matches);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Matching failed" });
   }
 });
 
-// AI SKILL SUGGESTIONS
+// AI SUGGESTIONS
 app.get("/skill-suggestions/:input", async (req, res) => {
-  const { input } = req.params;
-  
   try {
     const result = await pool.query(
-      `SELECT suggested_skill, category, relevance_score 
-       FROM skill_suggestions 
-       WHERE input_skill ILIKE $1 
-       ORDER BY relevance_score DESC 
-       LIMIT 5`,
-      [input]
+      `SELECT suggested_skill, category FROM skill_suggestions 
+       WHERE input_skill ILIKE $1 ORDER BY relevance_score DESC LIMIT 5`,
+      [req.params.input]
     );
-    
-    if (result.rows.length === 0) {
-      const similar = await pool.query(
-        `SELECT DISTINCT suggested_skill, category 
-         FROM skill_suggestions 
-         WHERE category IN (
-           SELECT category FROM skill_suggestions 
-           WHERE input_skill ILIKE $1 LIMIT 1
-         ) LIMIT 5`,
-        [input]
-      );
-      return res.json(similar.rows);
-    }
-    
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: "Failed to get suggestions" });
   }
 });
 
-// CREATE SESSION WITH MEETING LINK
+// CREATE SESSION
 app.post("/sessions", authenticateToken, async (req, res) => {
   const { partner_id, skill_taught, session_date, session_time, duration, notes, meeting_link } = req.body;
   
@@ -383,21 +299,17 @@ app.post("/sessions", authenticateToken, async (req, res) => {
     await pool.query(
       `INSERT INTO notifications (user_id, type, title, message, related_id) 
        VALUES ($1, 'session_request', 'New Session Request', $2, $3)`,
-      [partner_id, `${req.user.name} wants to learn ${skill_taught} from you`, result.rows[0].id]
+      [partner_id, `${req.user.name} wants to learn ${skill_taught}`, result.rows[0].id]
     );
     
-    io.to(`user_${partner_id}`).emit("notification", {
-      type: "session_request",
-      message: `${req.user.name} requested a session`
-    });
-    
+    io.to(`user_${partner_id}`).emit("notification", { type: "session_request" });
     res.status(201).json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: "Failed to create session" });
   }
 });
 
-// GET USER SESSIONS
+// GET SESSIONS
 app.get("/sessions", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -423,111 +335,53 @@ app.put("/sessions/:id/accept", authenticateToken, async (req, res) => {
       [req.params.id, req.user.userId]
     );
     
-    if (session.rows.length === 0) {
-      return res.status(403).json({ error: "Unauthorized or session not pending" });
-    }
+    if (session.rows.length === 0) return res.status(403).json({ error: "Unauthorized" });
     
     let meetLink = session.rows[0].meeting_link;
     if (!meetLink) {
       meetLink = `https://meet.google.com/lookup/${Math.random().toString(36).substring(2, 10)}`;
     }
     
-    await pool.query(
-      "UPDATE sessions SET status = 'accepted', meeting_link = $1 WHERE id = $2",
-      [meetLink, req.params.id]
-    );
+    await pool.query("UPDATE sessions SET status = 'accepted', meeting_link = $1 WHERE id = $2", [meetLink, req.params.id]);
     
     const requesterId = session.rows[0].requester_id;
     await pool.query(
-      `INSERT INTO notifications (user_id, type, title, message, related_id) 
-       VALUES ($1, 'session_accepted', 'Session Accepted', $2, $3)`,
-      [requesterId, `${req.user.name} accepted your session. Meeting: ${meetLink}`, req.params.id]
+      `INSERT INTO notifications (user_id, type, title, message) 
+       VALUES ($1, 'session_accepted', 'Session Accepted', $2)`,
+      [requesterId, `Your session was accepted! Meeting: ${meetLink}`]
     );
     
-    io.to(`user_${requesterId}`).emit("notification", {
-      type: "session_accepted",
-      meeting_link: meetLink
-    });
-    
+    io.to(`user_${requesterId}`).emit("notification", { type: "session_accepted", meeting_link: meetLink });
     res.json({ success: true, meeting_link: meetLink });
   } catch (err) {
-    res.status(500).json({ error: "Failed to accept session" });
+    res.status(500).json({ error: "Failed to accept" });
   }
 });
 
-// REJECT SESSION
-app.put("/sessions/:id/reject", authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      "UPDATE sessions SET status = 'rejected' WHERE id = $1 AND partner_id = $2 AND status = 'pending' RETURNING *",
-      [req.params.id, req.user.userId]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-    
-    await pool.query(
-      `INSERT INTO notifications (user_id, type, title, message, related_id) 
-       VALUES ($1, 'session_rejected', 'Session Rejected', $2, $3)`,
-      [result.rows[0].requester_id, `${req.user.name} rejected your session`, req.params.id]
-    );
-    
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to reject session" });
-  }
-});
-
-// START SESSION - TIMER BEGINS
+// START SESSION (TIMER BEGINS)
 app.post("/sessions/:id/start", authenticateToken, async (req, res) => {
   try {
     const session = await pool.query(
-      `SELECT * FROM sessions 
-       WHERE id = $1 
-       AND (requester_id = $2 OR partner_id = $2) 
-       AND status = 'accepted'`,
+      `SELECT * FROM sessions WHERE id = $1 AND (requester_id = $2 OR partner_id = $2) AND status = 'accepted'`,
       [req.params.id, req.user.userId]
     );
     
-    if (session.rows.length === 0) {
-      return res.status(400).json({ error: "Session not found or not ready" });
-    }
-    
-    const sess = session.rows[0];
-    if (sess.actual_start_time) {
-      return res.status(400).json({ error: "Session already started" });
-    }
+    if (session.rows.length === 0) return res.status(400).json({ error: "Session not ready" });
+    if (session.rows[0].actual_start_time) return res.status(400).json({ error: "Already started" });
     
     const startTime = new Date();
-    await pool.query(
-      "UPDATE sessions SET status = 'ongoing', actual_start_time = $1 WHERE id = $2",
-      [startTime, req.params.id]
-    );
+    await pool.query("UPDATE sessions SET status = 'ongoing', actual_start_time = $1 WHERE id = $2", [startTime, req.params.id]);
     
-    await pool.query(
-      `INSERT INTO verification_logs (session_id, user_id, action) 
-       VALUES ($1, $2, 'session_started')`,
-      [req.params.id, req.user.userId]
-    );
+    const otherUserId = session.rows[0].requester_id === req.user.userId ? session.rows[0].partner_id : session.rows[0].requester_id;
+    io.to(`user_${otherUserId}`).emit("session_started", { session_id: req.params.id, start_time: startTime });
     
-    const otherUserId = sess.requester_id === req.user.userId ? sess.partner_id : sess.requester_id;
-    io.to(`user_${otherUserId}`).emit("session_started", {
-      session_id: req.params.id,
-      start_time: startTime
-    });
-    
-    res.json({ 
-      success: true, 
-      start_time: startTime,
-      message: "Session started. Timer running."
-    });
+    res.json({ success: true, start_time: startTime });
   } catch (err) {
-    res.status(500).json({ error: "Failed to start session" });
+    res.status(500).json({ error: "Failed to start" });
   }
 });
 
-// GET SESSION STATUS WITH LIVE TIMER
+// GET SESSION STATUS
 app.get("/sessions/:id/status", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -539,9 +393,7 @@ app.get("/sessions/:id/status", authenticateToken, async (req, res) => {
       [req.params.id, req.user.userId]
     );
     
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Session not found" });
-    }
+    if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
     
     const sess = result.rows[0];
     const isRequester = sess.requester_id === req.user.userId;
@@ -551,8 +403,6 @@ app.get("/sessions/:id/status", authenticateToken, async (req, res) => {
       const now = new Date();
       const start = new Date(sess.actual_start_time);
       durationSeconds = Math.floor((now - start) / 1000);
-    } else if (sess.actual_duration_seconds) {
-      durationSeconds = sess.actual_duration_seconds;
     }
     
     res.json({
@@ -561,7 +411,6 @@ app.get("/sessions/:id/status", authenticateToken, async (req, res) => {
       skill_taught: sess.skill_taught,
       meeting_link: sess.meeting_link,
       start_time: sess.actual_start_time,
-      end_time: sess.actual_end_time,
       duration_seconds: durationSeconds,
       duration_formatted: formatDuration(durationSeconds),
       my_confirmation: isRequester ? sess.requester_confirmed : sess.partner_confirmed,
@@ -576,156 +425,62 @@ app.get("/sessions/:id/status", authenticateToken, async (req, res) => {
   }
 });
 
-// COMPLETE SESSION - DUAL CONFIRMATION ANTI-CHEAT
+// COMPLETE SESSION (ANTI-CHEAT)
 app.post("/sessions/:id/complete", authenticateToken, async (req, res) => {
-  const client = await pool.connect();
-  
   try {
-    await client.query('BEGIN');
-    
-    const { proof_image } = req.body;
-    
-    const session = await client.query(
-      `SELECT * FROM sessions 
-       WHERE id = $1 
-       AND (requester_id = $2 OR partner_id = $2) 
-       AND status = 'ongoing'`,
+    const session = await pool.query(
+      `SELECT * FROM sessions WHERE id = $1 AND (requester_id = $2 OR partner_id = $2) AND status = 'ongoing'`,
       [req.params.id, req.user.userId]
     );
     
-    if (session.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: "Session not ongoing or unauthorized" });
-    }
+    if (session.rows.length === 0) return res.status(400).json({ error: "Session not ongoing" });
     
     const sess = session.rows[0];
     const isRequester = sess.requester_id === req.user.userId;
     const otherUserId = isRequester ? sess.partner_id : sess.requester_id;
     const confirmationField = isRequester ? 'requester_confirmed' : 'partner_confirmed';
     
-    // Calculate duration
     const now = new Date();
     const start = new Date(sess.actual_start_time);
     const durationSeconds = Math.floor((now - start) / 1000);
     
-    // ANTI-CHEAT: Check minimum time (15 minutes)
+    // ANTI-CHEAT: Minimum 15 minutes
     if (durationSeconds < MIN_SESSION_DURATION) {
-      await client.query(
-        `UPDATE sessions 
-         SET cheating_flags = cheating_flags || $1::jsonb,
-             status = 'invalid'
-         WHERE id = $2`,
-        [JSON.stringify([`insufficient_time: ${durationSeconds}s < ${MIN_SESSION_DURATION}s required`]), req.params.id]
-      );
-      
-      await client.query('COMMIT');
+      await pool.query(`UPDATE sessions SET status = 'invalid' WHERE id = $1`, [req.params.id]);
       return res.status(400).json({ 
         error: "Session too short", 
-        message: `Minimum ${MIN_SESSION_DURATION/60} minutes required. You only completed ${Math.floor(durationSeconds/60)} minutes.`,
-        duration: durationSeconds
+        message: `Minimum 15 minutes required. You only did ${Math.floor(durationSeconds/60)} minutes.`
       });
     }
     
     // Update confirmation
-    await client.query(
-      `UPDATE sessions 
-       SET ${confirmationField} = TRUE,
-           actual_end_time = $1,
-           actual_duration_seconds = $2,
-           proof_image_url = COALESCE($3, proof_image_url)
-       WHERE id = $4`,
-      [now, durationSeconds, proof_image, req.params.id]
-    );
-    
-    await client.query(
-      `INSERT INTO verification_logs (session_id, user_id, action) 
-       VALUES ($1, $2, 'completion_initiated')`,
-      [req.params.id, req.user.userId]
+    await pool.query(
+      `UPDATE sessions SET ${confirmationField} = TRUE, actual_end_time = $1, actual_duration_seconds = $2 WHERE id = $3`,
+      [now, durationSeconds, req.params.id]
     );
     
     // Check if both confirmed
-    const updated = await client.query(
-      "SELECT requester_confirmed, partner_confirmed FROM sessions WHERE id = $1",
-      [req.params.id]
-    );
+    const updated = await pool.query("SELECT requester_confirmed, partner_confirmed FROM sessions WHERE id = $1", [req.params.id]);
     
-    const bothConfirmed = updated.rows[0].requester_confirmed && updated.rows[0].partner_confirmed;
-    
-    if (bothConfirmed) {
-      // VALID COMPLETION
-      await client.query(
-        `UPDATE sessions 
-         SET status = 'completed', is_valid = TRUE 
-         WHERE id = $1`,
-        [req.params.id]
-      );
-      
-      // Award points
-      await client.query(
-        "UPDATE users SET points = points + 150 WHERE id IN ($1, $2)",
+    if (updated.rows[0].requester_confirmed && updated.rows[0].partner_confirmed) {
+      // Valid completion
+      await pool.query("UPDATE sessions SET status = 'completed', is_valid = TRUE WHERE id = $1", [req.params.id]);
+      await pool.query("UPDATE users SET points = points + 150 WHERE id IN ($1, $2)", [sess.requester_id, sess.partner_id]);
+      await pool.query(
+        `UPDATE user_stats SET total_sessions = total_sessions + 1 WHERE user_id IN ($1, $2)`,
         [sess.requester_id, sess.partner_id]
       );
       
-      // Update stats
-      await client.query(
-        `UPDATE user_stats 
-         SET total_sessions = total_sessions + 1,
-             total_hours_spent = total_hours_spent + $3
-         WHERE user_id IN ($1, $2)`,
-        [sess.requester_id, sess.partner_id, Math.ceil(durationSeconds/3600)]
-      );
+      io.to(`user_${sess.requester_id}`).emit("session_completed", { valid: true, points: 150 });
+      io.to(`user_${sess.partner_id}`).emit("session_completed", { valid: true, points: 150 });
       
-      // Notifications
-      await client.query(
-        `INSERT INTO notifications (user_id, type, title, message) 
-         VALUES ($1, 'session_completed', 'Session Validated!', $2),
-                ($3, 'session_completed', 'Session Validated!', $4)`,
-        [
-          sess.requester_id, 
-          `Session completed! +150 points earned.`,
-          sess.partner_id,
-          `Session completed! +150 points earned.`
-        ]
-      );
-      
-      io.to(`user_${sess.requester_id}`).emit("session_completed", {
-        valid: true,
-        points: 150
-      });
-      
-      io.to(`user_${sess.partner_id}`).emit("session_completed", {
-        valid: true,
-        points: 150
-      });
-      
-      await client.query('COMMIT');
-      
-      res.json({
-        success: true,
-        validated: true,
-        message: "Session validated! Both users confirmed.",
-        points_earned: 150,
-        both_confirmed: true
-      });
+      res.json({ success: true, validated: true, points_earned: 150, both_confirmed: true });
     } else {
-      await client.query('COMMIT');
-      
-      io.to(`user_${otherUserId}`).emit("confirmation_needed", {
-        session_id: req.params.id
-      });
-      
-      res.json({
-        success: true,
-        validated: false,
-        message: "Waiting for partner confirmation...",
-        both_confirmed: false
-      });
+      io.to(`user_${otherUserId}`).emit("confirmation_needed", { session_id: req.params.id });
+      res.json({ success: true, validated: false, message: "Waiting for partner..." });
     }
   } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: "Failed to complete session" });
-  } finally {
-    client.release();
+    res.status(500).json({ error: "Failed to complete" });
   }
 });
 
@@ -739,9 +494,7 @@ app.post("/reviews", authenticateToken, async (req, res) => {
       [session_id]
     );
     
-    if (session.rows.length === 0) {
-      return res.status(400).json({ error: "Can only review completed valid sessions" });
-    }
+    if (session.rows.length === 0) return res.status(400).json({ error: "Can only review valid completed sessions" });
     
     const result = await pool.query(
       `INSERT INTO reviews (session_id, reviewer_id, reviewee_id, rating, feedback) 
@@ -749,11 +502,8 @@ app.post("/reviews", authenticateToken, async (req, res) => {
       [session_id, req.user.userId, reviewee_id, rating, feedback]
     );
     
-    // Update average rating
     await pool.query(
-      `UPDATE user_stats 
-       SET average_rating_received = (SELECT AVG(rating) FROM reviews WHERE reviewee_id = $1)
-       WHERE user_id = $1`,
+      `UPDATE user_stats SET average_rating_received = (SELECT AVG(rating) FROM reviews WHERE reviewee_id = $1) WHERE user_id = $1`,
       [reviewee_id]
     );
     
@@ -767,36 +517,13 @@ app.post("/reviews", authenticateToken, async (req, res) => {
 app.get("/notifications", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM notifications 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC 
-       LIMIT 20`,
+      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`,
       [req.user.userId]
     );
-    
-    const unread = await pool.query(
-      "SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE",
-      [req.user.userId]
-    );
-    
-    res.json({
-      notifications: result.rows,
-      unread_count: parseInt(unread.rows[0].count)
-    });
+    const unread = await pool.query("SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE", [req.user.userId]);
+    res.json({ notifications: result.rows, unread_count: parseInt(unread.rows[0].count) });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch notifications" });
-  }
-});
-
-app.put("/notifications/:id/read", authenticateToken, async (req, res) => {
-  try {
-    await pool.query(
-      "UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2",
-      [req.params.id, req.user.userId]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to update" });
   }
 });
 
@@ -804,19 +531,13 @@ app.put("/notifications/:id/read", authenticateToken, async (req, res) => {
 app.get("/messages/:userId", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT m.*, u.name as sender_name
-       FROM messages m
+      `SELECT m.*, u.name as sender_name FROM messages m
        JOIN users u ON m.sender_id = u.id
        WHERE (m.sender_id = $1 AND m.receiver_id = $2) OR (m.sender_id = $2 AND m.receiver_id = $1)
        ORDER BY m.created_at ASC`,
       [req.user.userId, req.params.userId]
     );
-    
-    await pool.query(
-      "UPDATE messages SET is_read = TRUE WHERE sender_id = $1 AND receiver_id = $2 AND is_read = FALSE",
-      [req.params.userId, req.user.userId]
-    );
-    
+    await pool.query("UPDATE messages SET is_read = TRUE WHERE sender_id = $1 AND receiver_id = $2", [req.params.userId, req.user.userId]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch messages" });
@@ -825,25 +546,16 @@ app.get("/messages/:userId", authenticateToken, async (req, res) => {
 
 app.post("/messages", authenticateToken, async (req, res) => {
   const { receiver_id, message } = req.body;
-  
   try {
     const result = await pool.query(
-      `INSERT INTO messages (sender_id, receiver_id, message) 
-       VALUES ($1, $2, $3) RETURNING *`,
+      `INSERT INTO messages (sender_id, receiver_id, message) VALUES ($1, $2, $3) RETURNING *`,
       [req.user.userId, receiver_id, message]
     );
-    
     await pool.query(
-      `INSERT INTO notifications (user_id, type, title, message) 
-       VALUES ($1, 'message', 'New Message', $2)`,
+      `INSERT INTO notifications (user_id, type, title, message) VALUES ($1, 'message', 'New Message', $2)`,
       [receiver_id, `New message from ${req.user.name}`]
     );
-    
-    io.to(`user_${receiver_id}`).emit("new_message", {
-      ...result.rows[0],
-      sender_name: req.user.name
-    });
-    
+    io.to(`user_${receiver_id}`).emit("new_message", { ...result.rows[0], sender_name: req.user.name });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: "Failed to send message" });
@@ -854,12 +566,9 @@ app.get("/chat-list", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT DISTINCT u.id, u.name, u.is_online,
-        (SELECT message FROM messages 
-         WHERE ((sender_id = u.id AND receiver_id = $1) OR (sender_id = $1 AND receiver_id = u.id))
-         ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT message FROM messages WHERE ((sender_id = u.id AND receiver_id = $1) OR (sender_id = $1 AND receiver_id = u.id)) ORDER BY created_at DESC LIMIT 1) as last_message,
         (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = $1 AND is_read = FALSE) as unread_count
-       FROM users u
-       JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = $1) OR (m.sender_id = $1 AND m.receiver_id = u.id)
+       FROM users u JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = $1) OR (m.sender_id = $1 AND m.receiver_id = u.id)
        WHERE u.id != $1`,
       [req.user.userId]
     );
@@ -869,53 +578,12 @@ app.get("/chat-list", authenticateToken, async (req, res) => {
   }
 });
 
-// ANALYTICS
-app.get("/analytics", authenticateToken, async (req, res) => {
-  try {
-    const stats = await pool.query(
-      `SELECT us.*, u.points, u.level
-       FROM user_stats us
-       JOIN users u ON us.user_id = u.id
-       WHERE u.id = $1`,
-      [req.user.userId]
-    );
-    
-    const recentActivity = await pool.query(
-      `SELECT DATE(created_at) as date, COUNT(*) as count
-       FROM sessions
-       WHERE (requester_id = $1 OR partner_id = $1) 
-       AND created_at > CURRENT_DATE - INTERVAL '7 days'
-       GROUP BY DATE(created_at)`,
-      [req.user.userId]
-    );
-    
-    const leaderboard = await pool.query(
-      `SELECT name, points, level FROM users ORDER BY points DESC LIMIT 10`
-    );
-    
-    res.json({
-      stats: stats.rows[0],
-      recent_activity: recentActivity.rows,
-      leaderboard: leaderboard.rows
-    });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch analytics" });
-  }
-});
-
 // Socket.io
 io.on("connection", (socket) => {
-  console.log("Connected:", socket.id);
-  
-  socket.on("join", (userId) => {
-    socket.join(`user_${userId}`);
-  });
-  
-  socket.on("disconnect", () => {
-    console.log("Disconnected:", socket.id);
-  });
+  socket.on("join", (userId) => socket.join(`user_${userId}`));
 });
 
-server.listen(5000, () => {
-  console.log("🚀 Anti-Cheat Skill Swap Server on port 5000");
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
