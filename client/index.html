@@ -1532,7 +1532,9 @@
     // ============================================
     // GLOBAL VARIABLES
     // ============================================
-    const API = 'https://skillswap-api-l1ra.onrender.com';
+    const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
+      ? 'http://localhost:5000'
+      : 'https://skillswap-api-l1ra.onrender.com';
     let currentUser = null;
     let token = localStorage.getItem('token');
     let socket = null;
@@ -1638,7 +1640,14 @@
           headers: {'Authorization': `Bearer ${token}`}
         });
         if (res.ok) {
-          currentUser = await res.json();
+          const profile = await res.json();
+          currentUser = {
+            ...profile,
+            stats: {
+              total_sessions: profile.total_sessions || 0,
+              avg_rating: profile.average_rating_received || profile.avg_rating || 0
+            }
+          };
           initSocket();
           showPage('dashboard');
         } else {
@@ -1741,7 +1750,7 @@
       container.innerHTML = tempSkills[type].map(s => `
         <span class="tag">
           ${s.name} ${type === 'teach' ? `(${s.proficiency})` : ''}
-          <button type="button" onclick="removeSkill('${type}', '${s.name}')">×</button>
+          <button type="button" onclick='removeSkill(${JSON.stringify(type)}, ${JSON.stringify(s.name)})'>×</button>
         </span>
       `).join('');
     }
@@ -1761,7 +1770,7 @@
       document.getElementById('dash-level').textContent = currentUser.level;
       document.getElementById('dash-points').textContent = currentUser.points;
       document.getElementById('nav-points').textContent = `${currentUser.points} pts`;
-      document.getElementById('dash-sessions').textContent = currentUser.stats?.total_sessions || 0;
+      document.getElementById('dash-sessions').textContent = currentUser.stats?.total_sessions || currentUser.total_sessions || 0;
       
       try {
         const res = await fetch(`${API}/smart-matches`, {
@@ -1789,10 +1798,10 @@
           ${m.they_teach_i_want.length > 0 ? `<div class="skills-match"><strong>They teach you:</strong> ${m.they_teach_i_want.join(', ')}</div>` : ''}
           ${m.i_teach_they_want.length > 0 ? `<div class="skills-match"><strong>You teach them:</strong> ${m.i_teach_they_want.join(', ')}</div>` : ''}
           <div class="match-actions">
-            <button class="btn btn-primary" onclick="startChat(${m.id}, '${m.name}')">
+            <button class="btn btn-primary" onclick='startChat(${m.id}, ${JSON.stringify(m.name)})'>
               <i class="fas fa-comment"></i> Chat
             </button>
-            <button class="btn btn-secondary" onclick="quickBook(${m.id}, '${m.name}')">
+            <button class="btn btn-secondary" onclick='quickBook(${m.id}, ${JSON.stringify(m.name)})'>
               <i class="fas fa-calendar"></i> Book
             </button>
           </div>
@@ -1909,7 +1918,7 @@
           
           return `
             <div class="chat-item ${currentChatUser?.id === chat.id ? 'active' : ''}" 
-                 onclick="selectChat(${chat.id}, '${chat.name}')" 
+                 onclick='selectChat(${chat.id}, ${JSON.stringify(chat.name)})' 
                  id="chat-item-${chat.id}">
               <div class="chat-avatar ${chat.is_online ? 'online' : ''}">${chat.name.charAt(0)}</div>
               <div class="chat-preview">
@@ -2069,6 +2078,11 @@
           })
         });
         
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Send failed');
+        }
+
         const savedMsg = await res.json();
         
         // Update status
@@ -2081,6 +2095,7 @@
         loadChatList();
       } catch (err) {
         console.error('Failed to send:', err);
+        alert(err.message || 'Failed to send message');
       }
     }
 
@@ -2130,6 +2145,11 @@
     }
 
     async function submitBooking() {
+      if (!currentChatUser) {
+        alert('Please select a partner before booking a session');
+        return;
+      }
+
       const skill = document.getElementById('book-skill').value;
       const date = document.getElementById('book-date').value;
       const time = document.getElementById('book-time').value;
@@ -2156,14 +2176,17 @@
             notes: document.getElementById('book-notes').value
           })
         });
-        
-        if (res.ok) {
-          closeBookModal();
-          alert('Session request sent!');
-          loadSessions('upcoming');
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Booking failed');
         }
+        
+        closeBookModal();
+        alert('Session request sent!');
+        loadSessions('upcoming');
       } catch (err) {
-        alert('Failed to book session');
+        alert(err.message || 'Failed to book session');
       }
     }
 
