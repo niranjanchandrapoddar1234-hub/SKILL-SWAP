@@ -47,6 +47,26 @@
       --sidebar-bg: #ffffff;
       --header-bg: #f0f2f5;
     }
+
+    body.dark-mode {
+      --primary: #3ecbff;
+      --primary-dark: #1aa9ea;
+      --secondary: #0ea5c6;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #f87171;
+      --bg: #06131c;
+      --chat-bg: #071722;
+      --chat-bg-pattern: radial-gradient(circle at top, rgba(62, 203, 255, 0.08), transparent 38%), linear-gradient(180deg, rgba(6, 19, 28, 0.98), rgba(3, 10, 16, 1));
+      --white: #0b1d29;
+      --text: #edf7ff;
+      --text-light: #8aa4b8;
+      --border: rgba(130, 171, 196, 0.18);
+      --sent-bg: #0f2a35;
+      --received-bg: #102432;
+      --sidebar-bg: #081823;
+      --header-bg: #081823;
+    }
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -59,6 +79,7 @@
       overscroll-behavior: none;
       color: var(--text);
       touch-action: manipulation;
+      transition: background 0.25s ease, color 0.25s ease;
     }
     
     /* Navigation */
@@ -602,6 +623,77 @@
       inset: 0;
       opacity: 0;
       cursor: pointer;
+    }
+
+    .theme-preference-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background:
+        linear-gradient(135deg, rgba(62, 203, 255, 0.1), rgba(14, 165, 198, 0.04)),
+        var(--white);
+      box-shadow: 0 16px 40px rgba(3, 12, 18, 0.08);
+    }
+
+    .theme-preference-title {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .theme-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .theme-switch input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 1px;
+      height: 1px;
+    }
+
+    .theme-switch-track {
+      width: 58px;
+      height: 32px;
+      border-radius: 999px;
+      background: rgba(100, 116, 139, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      position: relative;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+
+    .theme-switch-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .theme-switch input:checked + .theme-switch-track {
+      background: linear-gradient(135deg, #3ecbff, #0ea5c6);
+      border-color: rgba(62, 203, 255, 0.6);
+      box-shadow: 0 0 0 4px rgba(62, 203, 255, 0.14);
+    }
+
+    .theme-switch input:checked + .theme-switch-track .theme-switch-thumb {
+      transform: translateX(26px);
+      background: #03131d;
     }
 
     .stats-grid {
@@ -1710,6 +1802,70 @@
       gap: 0.75rem;
       justify-content: flex-end;
     }
+
+    body.dark-mode #profile-modal .modal {
+      background:
+        radial-gradient(circle at top, rgba(62, 203, 255, 0.14), transparent 34%),
+        linear-gradient(180deg, rgba(12, 28, 38, 0.98), rgba(6, 17, 24, 0.98));
+      color: #edf7ff;
+      border: 1px solid rgba(62, 203, 255, 0.14);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    body.dark-mode #profile-modal .modal-header,
+    body.dark-mode #profile-modal .modal-footer {
+      border-color: rgba(130, 171, 196, 0.16);
+    }
+
+    body.dark-mode #profile-modal label,
+    body.dark-mode #profile-modal .modal-header h3 {
+      color: #edf7ff;
+    }
+
+    body.dark-mode #profile-modal .form-hint {
+      color: #8aa4b8;
+    }
+
+    body.dark-mode #profile-modal input,
+    body.dark-mode #profile-modal textarea,
+    body.dark-mode #profile-modal select {
+      background: rgba(11, 29, 41, 0.92);
+      color: #edf7ff;
+      border-color: rgba(130, 171, 196, 0.18);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    body.dark-mode #profile-modal input::placeholder,
+    body.dark-mode #profile-modal textarea::placeholder {
+      color: #6f8ca1;
+    }
+
+    body.dark-mode #profile-modal input:focus,
+    body.dark-mode #profile-modal textarea:focus,
+    body.dark-mode #profile-modal select:focus {
+      border-color: rgba(62, 203, 255, 0.75);
+      box-shadow: 0 0 0 3px rgba(62, 203, 255, 0.15);
+    }
+
+    body.dark-mode #profile-modal .proficiency-chips button {
+      background: rgba(11, 29, 41, 0.92);
+      color: #8aa4b8;
+      border-color: rgba(130, 171, 196, 0.18);
+    }
+
+    body.dark-mode #profile-modal hr {
+      border-top-color: rgba(130, 171, 196, 0.16) !important;
+    }
+
+    body.dark-mode #profile-modal .tag {
+      background: linear-gradient(135deg, #0ea5c6, #3ecbff);
+      color: #03131d;
+      font-weight: 700;
+    }
+
+    body.dark-mode #profile-modal .tag button {
+      color: #03131d;
+    }
     
     /* Live Session */
     .live-session-modal .modal {
@@ -2471,6 +2627,20 @@
           <label>New password <span class="form-hint">(optional)</span></label>
           <input type="password" id="edit-password" placeholder="Leave blank to keep current" autocomplete="new-password">
         </div>
+        <div class="form-group">
+          <div class="theme-preference-card">
+            <div>
+              <span class="theme-preference-title">Dark mode</span>
+              <p class="form-hint">Use the darker neon look from your preview across the app.</p>
+            </div>
+            <label class="theme-switch" for="edit-dark-mode">
+              <input type="checkbox" id="edit-dark-mode" aria-label="Enable dark mode">
+              <span class="theme-switch-track">
+                <span class="theme-switch-thumb"></span>
+              </span>
+            </label>
+          </div>
+        </div>
         <hr style="border: none; border-top: 1px solid var(--border); margin: 1.25rem 0;">
         <div class="form-group">
           <label>Skills you teach</label>
@@ -2508,6 +2678,7 @@
     // ============================================
     // GLOBAL VARIABLES
     // ============================================
+    const THEME_STORAGE_KEY = 'skillswap-theme';
     const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
       ? 'http://localhost:5000'
       : 'https://skillswap-api-l1ra.onrender.com';
@@ -2542,10 +2713,30 @@
     let webrtcRemoteIceQueue = [];
     let webrtcIceCache = null;
 
+    function getSavedTheme() {
+      return localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+    }
+
+    function updateThemeMeta(mode) {
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) metaTheme.setAttribute('content', mode === 'dark' ? '#06131c' : '#6366f1');
+    }
+
+    function applyTheme(mode) {
+      const resolvedMode = mode === 'dark' ? 'dark' : 'light';
+      document.body.classList.toggle('dark-mode', resolvedMode === 'dark');
+      localStorage.setItem(THEME_STORAGE_KEY, resolvedMode);
+      updateThemeMeta(resolvedMode);
+      const toggle = document.getElementById('edit-dark-mode');
+      if (toggle) toggle.checked = resolvedMode === 'dark';
+    }
+
     // ============================================
     // INITIALIZATION
     // ============================================
     document.addEventListener('DOMContentLoaded', () => {
+      applyTheme(getSavedTheme());
+
       if (token) {
         fetchProfile();
       }
@@ -2613,6 +2804,13 @@
             letter.textContent = '';
           };
           r.readAsDataURL(f);
+        });
+      }
+
+      const darkModeToggle = document.getElementById('edit-dark-mode');
+      if (darkModeToggle) {
+        darkModeToggle.addEventListener('change', () => {
+          applyTheme(darkModeToggle.checked ? 'dark' : 'light');
         });
       }
 
@@ -3025,10 +3223,12 @@
     function openProfileModal() {
       if (!currentUser) return;
       syncProfileSkillsFromUser();
+      applyTheme(getSavedTheme());
       document.getElementById('edit-name').value = currentUser.name || '';
       document.getElementById('edit-location').value = currentUser.location || '';
       document.getElementById('edit-bio').value = currentUser.bio || '';
       document.getElementById('edit-password').value = '';
+      document.getElementById('edit-dark-mode').checked = getSavedTheme() === 'dark';
       profileImageDirty = false;
       pendingProfileImage = null;
       const wrap = document.getElementById('profile-modal-avatar-wrap');
